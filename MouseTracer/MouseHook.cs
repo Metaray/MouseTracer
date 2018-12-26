@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Diagnostics;
 using System.Windows.Forms;
 using System.Collections.Generic;
+using Microsoft.Win32.SafeHandles;
 
 namespace MouseTracer
 {
@@ -33,25 +34,26 @@ namespace MouseTracer
 
         public static void Start()
         {
-            _hookID = SetHook(_proc);
+            hookHandle = SetHook(_proc);
         }
         public static void Stop()
         {
-            UnhookWindowsHookEx(_hookID);
+            hookHandle.Dispose();
+            hookHandle = null;
         }
 
         private static LowLevelMouseProc _proc = HookCallback;
-        private static IntPtr _hookID = IntPtr.Zero;
+        private static SafeHookHandle hookHandle;
         private static uint lastMoveTime = 0;
         public static uint moveLimit = 10;
 
-        private static IntPtr SetHook(LowLevelMouseProc proc)
+        private static SafeHookHandle SetHook(LowLevelMouseProc proc)
         {
             using (Process curProcess = Process.GetCurrentProcess())
             using (ProcessModule curModule = curProcess.MainModule)
             {
-                IntPtr hook = SetWindowsHookEx(WH_MOUSE_LL, proc, GetModuleHandle("user32"), 0);
-                if (hook == IntPtr.Zero)
+                SafeHookHandle hook = SetWindowsHookEx(WH_MOUSE_LL, proc, GetModuleHandle("user32"), 0);
+                if (hook.IsInvalid)
                     throw new System.ComponentModel.Win32Exception();
                 return hook;
             }
@@ -93,7 +95,7 @@ namespace MouseTracer
                         }
                 }
             }
-            return CallNextHookEx(_hookID, nCode, wParam, lParam);
+            return CallNextHookEx(hookHandle, nCode, wParam, lParam);
         }
 
         private const int WH_MOUSE_LL = 14;
@@ -126,7 +128,7 @@ namespace MouseTracer
         }
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        private static extern IntPtr SetWindowsHookEx(int idHook,
+        private static extern SafeHookHandle SetWindowsHookEx(int idHook,
           LowLevelMouseProc lpfn, IntPtr hMod, uint dwThreadId);
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
@@ -134,10 +136,23 @@ namespace MouseTracer
         private static extern bool UnhookWindowsHookEx(IntPtr hhk);
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode,
+        private static extern IntPtr CallNextHookEx(SafeHookHandle hhk, int nCode,
           IntPtr wParam, IntPtr lParam);
 
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern IntPtr GetModuleHandle(string lpModuleName);
+
+        internal class SafeHookHandle : SafeHandleZeroOrMinusOneIsInvalid
+        {
+            private SafeHookHandle()
+                : base(true)
+            {
+            }
+
+            override protected bool ReleaseHandle()
+            {
+                return UnhookWindowsHookEx(handle);
+            }
+        }
     }
 }
