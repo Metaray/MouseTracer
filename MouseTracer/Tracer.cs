@@ -12,21 +12,18 @@ namespace MouseTracer
         private Rectangle screenBounds;
         private ColorPalette palette;
 
-        private bool running;
-        private const int histLength = 4;
+        private const int HistLength = 4;
         private List<Point> mouseHistory;
 
-        private bool drawClicks = true;
-        public bool DrawClicks
-        {
-            get { return drawClicks; }
-            set { drawClicks = value; }
-        }
+        private bool running;
+
+        public bool DrawClicks { get; set; }
 
         public Tracer(ColorPalette palette)
         {
             this.palette = palette;
 
+            // TODO: unsubscribe from MouseHook on destruct
             MouseHook.MouseAction += DoMouseEvent;
 
             screenBounds = Utils.GetScreenSize();
@@ -37,17 +34,20 @@ namespace MouseTracer
 
             running = false;
             mouseHistory = new List<Point>();
+            DrawClicks = true;
         }
 
         private void DoMouseEvent(object sender, MouseEventArgs e)
         {
-            if (!running) return;
-            UpdateMousePos(e.X, e.Y);
-            if (e.Button == MouseButtons.None)
+            if (!running)
+            {
+                return;
+            }
+            if (UpdateMousePos(e.X - screenBounds.X, e.Y - screenBounds.Y))
             {
                 DrawMouseMove();
             }
-            else if (e.Button == MouseButtons.Left || e.Button == MouseButtons.Right)
+            if (e.Button == MouseButtons.Left || e.Button == MouseButtons.Right)
             {
                 DrawMouseClick();
             }
@@ -64,36 +64,36 @@ namespace MouseTracer
 
         private void DrawMouseClick()
         {
-            if (drawClicks && mouseHistory.Count >= 2)
+            if (DrawClicks && mouseHistory.Count >= 2)
             {
                 const int cw = 10;
                 Color c = palette.DirMod(mouseHistory[0], mouseHistory[1]);
-                graph.DrawLine(new Pen(c), mouseHistory[0], mouseHistory[1]);
                 graph.FillEllipse(new SolidBrush(c), mouseHistory[0].X - cw / 2, mouseHistory[0].Y - cw / 2, cw, cw);
             }
         }
 
-        private void UpdateMousePos(int x, int y)
+        private bool UpdateMousePos(int x, int y)
         {
-            Point np = new Point(x, y);
-            if (mouseHistory.Count < histLength)
+            Point pos = new Point(x, y);
+            if (mouseHistory.Count > 0 && pos == mouseHistory[0])
             {
-                mouseHistory.Insert(0, np);
+                return false;
             }
-            else
+            mouseHistory.Insert(0, pos);
+            if (mouseHistory.Count > HistLength)
             {
-                if (np == mouseHistory[0]) return;
-                for (int i = histLength-2; i >= 0; --i)
-                    mouseHistory[i+1] = mouseHistory[i];
-                mouseHistory[0] = np;
+                mouseHistory.RemoveAt(HistLength);
             }
+            return true;
         }
 
-        public void SetRunning(bool state)
+        public void SetRunning(bool run)
         {
-            if (state == true)
+            if (run)
+            {
                 mouseHistory.Clear();
-            running = state;
+            }
+            running = run;
         }
     }
 }

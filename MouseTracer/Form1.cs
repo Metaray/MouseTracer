@@ -38,6 +38,7 @@ namespace MouseTracer
             //curPalette = new PaletteBlackWhite();
             curPalette = new PaletteColorful();
             art = new Tracer(curPalette);
+            art.DrawClicks = drawClicksToolStripMenuItem.Checked;
             stats = new StatCollector();
 
             redrawTimer = new Timer();
