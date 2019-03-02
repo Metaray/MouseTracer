@@ -8,11 +8,66 @@ namespace MouseTracer
     {
         private NotifyIcon trayIcon;
         private Tracer art;
-        private ColorPalette curPalette;
         private Timer redrawTimer;
         private StatCollector stats;
 
-        private Rectangle gfxArea
+        private bool running = false;
+        private bool unsavedChanges = false;
+        private bool isColored = true;
+
+        public MainWindow()
+        {
+            InitializeComponent();
+
+            trayIcon = new NotifyIcon();
+            trayIcon.Text = "MouseTracer";
+            trayIcon.Icon = this.Icon;
+            trayIcon.MouseClick += TrayIcon_MouseClick;
+            trayIcon.Visible = false;
+
+            ResetTrace();
+
+            redrawTimer = new Timer();
+            redrawTimer.Interval = 200;
+            redrawTimer.Start();
+            redrawTimer.Tick += (object sender, EventArgs e) => { this.Refresh(); };
+        }
+
+        private void ResetTrace()
+        {
+            running = false;
+            unsavedChanges = false;
+
+            ColorPalette curPalette;
+            if (isColored)
+            {
+                curPalette = new PaletteColorful();
+            }
+            else
+            {
+                curPalette = new PaletteBlackWhite();
+            }
+
+            art = new Tracer(curPalette);
+            art.DrawClicks = drawClicksToolStripMenuItem.Checked;
+
+            stats = new StatCollector();
+        }
+
+        private void SetRunning(bool run)
+        {
+            art.SetRunning(run);
+            stats.SetRunning(run);
+            if (run)
+            {
+                unsavedChanges = true;
+            }
+            running = run;
+            startToolStripMenuItem.Enabled = !run;
+            pauseToolStripMenuItem.Enabled = run;
+        }
+
+        private Rectangle PreviewArea
         {
             get
             {
@@ -21,30 +76,29 @@ namespace MouseTracer
                 return tmp;
             }
         }
-        private bool running = false;
-        private bool changed = false;
-        private bool iscolored = true;
 
-        public MainWindow()
+        protected override void OnPaint(PaintEventArgs e)
         {
-            InitializeComponent();
+            base.OnPaint(e);
+            Graphics graph = e.Graphics;
+            graph.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceCopy;
+            graph.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.Bilinear;
 
-            trayIcon = new NotifyIcon();
-            trayIcon.Text = "MouseTracer";
-            trayIcon.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
-            trayIcon.MouseClick += TrayIcon_MouseClick;
-            trayIcon.Visible = true;
-
-            //curPalette = new PaletteBlackWhite();
-            curPalette = new PaletteColorful();
-            art = new Tracer(curPalette);
-            art.DrawClicks = drawClicksToolStripMenuItem.Checked;
-            stats = new StatCollector();
-
-            redrawTimer = new Timer();
-            redrawTimer.Interval = 200;
-            redrawTimer.Start();
-            redrawTimer.Tick += (object sender, EventArgs e) => { this.Refresh(); };
+            Rectangle view = PreviewArea;
+            // if "black bars" on top and bottom else on sides
+            if (view.Width * art.image.Height <= art.image.Width * view.Height)
+            {
+                int vsize = view.Width * art.image.Height / art.image.Width;
+                view.Y = view.Y + (view.Height - vsize) / 2;
+                view.Height = vsize;
+            }
+            else
+            {
+                int hsize = view.Height * art.image.Width / art.image.Height;
+                view.X = view.X + (view.Width - hsize) / 2;
+                view.Width = hsize;
+            }
+            graph.DrawImage(art.image, view);
         }
 
         private void TrayIcon_MouseClick(object sender, MouseEventArgs e)
@@ -55,7 +109,7 @@ namespace MouseTracer
 
         private void MainWindow_Resize(object sender, EventArgs e)
         {
-            if (WindowState == FormWindowState.Minimized)
+            if (this.WindowState == FormWindowState.Minimized)
             {
                 trayIcon.Visible = true;
                 this.Hide();
@@ -65,17 +119,6 @@ namespace MouseTracer
                 trayIcon.Visible = false;
                 this.Show();
             }
-        }
-
-        private void SetRunning(bool run)
-        {
-            art.SetRunning(run);
-            stats.SetRunning(run);
-            if (run)
-                changed = true;
-            running = run;
-            startToolStripMenuItem.Enabled = !run;
-            pauseToolStripMenuItem.Enabled = run;
         }
 
         private void startToolStripMenuItem_Click(object sender, EventArgs e)
@@ -90,26 +133,29 @@ namespace MouseTracer
 
         private void resetToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if (changed)
+            if (unsavedChanges)
             {
                 DialogResult choice = MessageBox.Show("Do you want to reset picture?", "Reset", MessageBoxButtons.YesNo);
                 if (choice != DialogResult.Yes)
+                {
                     return;
+                }
             }
-            art = new Tracer(curPalette);
-            changed = false;
+            ResetTrace();
         }
 
         private void exitToolStripMenuItem_Click(object sender, EventArgs e)
         {
             DialogResult canClose = ConfirmSaveDialog("Save Image before exiting?", "Exit");
             if (canClose == DialogResult.OK)
+            {
                 Application.Exit();
+            }
         }
 
         private DialogResult ConfirmSaveDialog(string reason, string title)
         {
-            if (!changed)
+            if (!unsavedChanges)
             {
                 return DialogResult.OK;
             }
@@ -139,7 +185,9 @@ namespace MouseTracer
             {
                 art.image.Save(saveDlg.FileName);
                 if (!running)
-                    changed = false;
+                {
+                    unsavedChanges = false;
+                }
             }
             return dlgResult;
         }
@@ -149,59 +197,30 @@ namespace MouseTracer
             ShowFileSaveDialog();
         }
 
-        protected override void OnPaint(PaintEventArgs e)
-        {
-            base.OnPaint(e);
-            Graphics graph = e.Graphics;
-            graph.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceCopy;
-            graph.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.Bilinear;
-
-            Rectangle drawat = gfxArea;
-            // if "black bars" on top and bottom
-            if (drawat.Width * art.image.Height <= art.image.Width * drawat.Height)
-            {
-                int vsize = drawat.Width * art.image.Height / art.image.Width;
-                drawat.Y = drawat.Y + (drawat.Height - vsize) / 2;
-                drawat.Height = vsize;
-            }
-            else
-            {
-                int hsize = drawat.Height * art.image.Width / art.image.Height;
-                drawat.X = drawat.X + (drawat.Width - hsize) / 2;
-                drawat.Width = hsize;
-            }
-            graph.DrawImage(art.image, drawat);
-        }
-
         private void MainWindow_FormClosing(object sender, FormClosingEventArgs e)
         {
             if (e.CloseReason == CloseReason.UserClosing)
             {
                 DialogResult canClose = ConfirmSaveDialog("Save Image before exiting?", "Exit");
                 if (canClose != DialogResult.OK)
+                {
                     e.Cancel = true;
+                }
             }
         }
 
         private void coloredToolStripMenuItem_CheckStateChanged(object sender, EventArgs e)
         {
-            if ((coloredToolStripMenuItem.CheckState == CheckState.Checked) == iscolored) return;
+            if (coloredToolStripMenuItem.Checked == isColored)
+            {
+                return;
+            }
 
             DialogResult isok = ConfirmSaveDialog("Changing color resets image. Save?", "Color change");
             if (isok == DialogResult.OK)
             {
-                SetRunning(false);
-                stats = new StatCollector();
-                if (coloredToolStripMenuItem.CheckState == CheckState.Checked)
-                {
-                    art = new Tracer(new PaletteColorful());
-                    iscolored = true;
-                }
-                else
-                {
-                    art = new Tracer(new PaletteBlackWhite());
-                    iscolored = false;
-                }
+                isColored = coloredToolStripMenuItem.Checked;
+                ResetTrace();
             }
             else
             {
