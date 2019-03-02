@@ -9,13 +9,23 @@ namespace MouseTracer
 {
     public static class MouseHook
     {
+        private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
+
+        // Without Pin garbage collector destroys callback procedure
+        private static LowLevelMouseProc hookProcPin = HookCallback;
+        private static SafeHookHandle hookHandle;
+
+        // Times in milliseconds
+        private static uint lastMoveTime = 0;
+        public static uint moveEventDelay = 10;
+
         public delegate void MouseEventHandler(object sender, MouseEventArgs e);
         public static event MouseEventHandler MouseAction = delegate { };
 
         private static Timer sendTimer;
         private static Queue<MouseEventArgs> events;
 
-        public static void HookSetup()
+        static MouseHook()
         {
             events = new Queue<MouseEventArgs>();
             sendTimer = new Timer();
@@ -34,18 +44,14 @@ namespace MouseTracer
 
         public static void Start()
         {
-            hookHandle = SetHook(_proc);
+            hookHandle = SetHook(hookProcPin);
         }
+
         public static void Stop()
         {
             hookHandle.Dispose();
             hookHandle = null;
         }
-
-        private static LowLevelMouseProc _proc = HookCallback;
-        private static SafeHookHandle hookHandle;
-        private static uint lastMoveTime = 0;
-        public static uint moveLimit = 10;
 
         private static SafeHookHandle SetHook(LowLevelMouseProc proc)
         {
@@ -59,10 +65,7 @@ namespace MouseTracer
             }
         }
 
-        private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
-
-        private static IntPtr HookCallback(
-          int nCode, IntPtr wParam, IntPtr lParam)
+        private static IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
             if (nCode >= 0)
             {
@@ -70,32 +73,37 @@ namespace MouseTracer
 
                 switch ((MouseMessages)wParam)
                 {
-                    case MouseMessages.WM_LBUTTONDOWN:
-                        {
-                            events.Enqueue(new MouseEventArgs(MouseButtons.Left, 1, hookStruct.pt.x, hookStruct.pt.y, 0));
-                            break;
-                        }
-                    case MouseMessages.WM_RBUTTONDOWN:
-                        {
-                            events.Enqueue(new MouseEventArgs(MouseButtons.Right, 1, hookStruct.pt.x, hookStruct.pt.y, 0));
-                            break;
-                        }
-                    case MouseMessages.WM_MOUSEMOVE:
-                        {
-                            if (hookStruct.time - lastMoveTime >= moveLimit)
-                            {
-                                events.Enqueue(new MouseEventArgs(MouseButtons.None, 0, hookStruct.pt.x, hookStruct.pt.y, 0));
-                                lastMoveTime = hookStruct.time;
-                            }
-                            break;
-                        }
-                    default:
-                        {
-                            break;
-                        }
+                case MouseMessages.WM_LBUTTONDOWN:
+                    events.Enqueue(new MouseEventArgs(MouseButtons.Left, 1, hookStruct.pt.x, hookStruct.pt.y, 0));
+                    break;
+
+                case MouseMessages.WM_RBUTTONDOWN:
+                    events.Enqueue(new MouseEventArgs(MouseButtons.Right, 1, hookStruct.pt.x, hookStruct.pt.y, 0));
+                    break;
+
+                case MouseMessages.WM_MOUSEMOVE:
+                    if (hookStruct.time - lastMoveTime >= moveEventDelay)
+                    {
+                        events.Enqueue(new MouseEventArgs(MouseButtons.None, 0, hookStruct.pt.x, hookStruct.pt.y, 0));
+                        lastMoveTime = hookStruct.time;
+                    }
+                    break;
+
+                default:
+                    break;
                 }
             }
             return CallNextHookEx(hookHandle, nCode, wParam, lParam);
+        }
+
+        internal class SafeHookHandle : SafeHandleZeroOrMinusOneIsInvalid
+        {
+            private SafeHookHandle() : base(true) {}
+
+            override protected bool ReleaseHandle()
+            {
+                return UnhookWindowsHookEx(handle);
+            }
         }
 
         private const int WH_MOUSE_LL = 14;
@@ -141,18 +149,5 @@ namespace MouseTracer
 
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern IntPtr GetModuleHandle(string lpModuleName);
-
-        internal class SafeHookHandle : SafeHandleZeroOrMinusOneIsInvalid
-        {
-            private SafeHookHandle()
-                : base(true)
-            {
-            }
-
-            override protected bool ReleaseHandle()
-            {
-                return UnhookWindowsHookEx(handle);
-            }
-        }
     }
 }

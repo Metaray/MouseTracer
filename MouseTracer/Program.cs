@@ -16,7 +16,6 @@ namespace MouseTracer
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            MouseHook.HookSetup();
             MouseHook.Start();
             Application.Run(new MainWindow());
             MouseHook.Stop();
