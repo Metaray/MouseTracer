@@ -2,13 +2,16 @@
 using System.Runtime.InteropServices;
 using System.Diagnostics;
 using System.Windows.Forms;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using Microsoft.Win32.SafeHandles;
+using System.Threading;
 
 namespace MouseTracer
 {
     public static class MouseHook
     {
+        private static Thread hookThread;
+
         private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
 
         // Without Pin garbage collector destroys callback procedure
@@ -17,34 +20,44 @@ namespace MouseTracer
 
         // Times in milliseconds
         private static uint lastMoveTime = 0;
-        public static uint moveEventDelay = 10;
+        public static uint MoveEventDelay = 10;
 
         public delegate void MouseEventHandler(object sender, MouseEventArgs e);
         public static event MouseEventHandler MouseAction = delegate { };
 
-        private static Timer sendTimer;
-        private static Queue<MouseEventArgs> events;
+        private static System.Windows.Forms.Timer sendTimer;
+        private static ConcurrentQueue<MouseEventArgs> events;
 
         static MouseHook()
         {
-            events = new Queue<MouseEventArgs>();
-            sendTimer = new Timer();
-            sendTimer.Interval = 1;
+            events = new ConcurrentQueue<MouseEventArgs>();
+
+            sendTimer = new System.Windows.Forms.Timer();
+            sendTimer.Interval = 10;
             sendTimer.Start();
             sendTimer.Tick += SendTimer_Tick;
         }
 
+        private static void HookThreadLoop()
+        {
+            hookHandle = SetHook(hookProcPin);
+            Application.Run();
+        }
+
         private static void SendTimer_Tick(object sender, EventArgs e)
         {
-            while (events.Count > 0)
+            MouseEventArgs args;
+            while (events.TryDequeue(out args))
             {
-                MouseAction(null, events.Dequeue());
+                MouseAction(null, args);
             }
         }
 
         public static void Start()
         {
-            hookHandle = SetHook(hookProcPin);
+            hookThread = new Thread(HookThreadLoop);
+            hookThread.IsBackground = true;
+            hookThread.Start();
         }
 
         public static void Stop()
@@ -82,7 +95,7 @@ namespace MouseTracer
                     break;
 
                 case MouseMessages.WM_MOUSEMOVE:
-                    if (hookStruct.time - lastMoveTime >= moveEventDelay)
+                    if (hookStruct.time - lastMoveTime >= MoveEventDelay)
                     {
                         events.Enqueue(new MouseEventArgs(MouseButtons.None, 0, hookStruct.pt.x, hookStruct.pt.y, 0));
                         lastMoveTime = hookStruct.time;
