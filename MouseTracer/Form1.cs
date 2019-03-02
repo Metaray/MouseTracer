@@ -48,9 +48,17 @@ namespace MouseTracer
                 curPalette = new PaletteBlackWhite();
             }
 
+            if (art != null)
+            {
+                art.Dispose();
+            }
             art = new Tracer(curPalette);
             art.DrawClicks = drawClicksToolStripMenuItem.Checked;
 
+            if (stats != null)
+            {
+                stats.Dispose();
+            }
             stats = new StatCollector();
         }
 

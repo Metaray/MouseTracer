@@ -6,7 +6,7 @@ using System.Windows.Forms;
 
 namespace MouseTracer
 {
-    class StatCollector
+    class StatCollector : IDisposable
     {
         private bool running = false;
         private double distance = 0.0f;
@@ -16,6 +16,11 @@ namespace MouseTracer
         public StatCollector()
         {
             MouseHook.MouseAction += DoMouseEvent;
+        }
+
+        public void Dispose()
+        {
+            MouseHook.MouseAction -= DoMouseEvent;
         }
 
         public void SetRunning(bool state)

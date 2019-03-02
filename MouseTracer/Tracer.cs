@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 namespace MouseTracer
 {
-    class Tracer
+    class Tracer : IDisposable
     {
         public Graphics graph;
         public Bitmap image;
@@ -35,6 +35,13 @@ namespace MouseTracer
             running = false;
             mouseHistory = new List<Point>();
             DrawClicks = true;
+        }
+
+        public void Dispose()
+        {
+            MouseHook.MouseAction -= DoMouseEvent;
+            graph.Dispose();
+            image.Dispose();
         }
 
         private void DoMouseEvent(object sender, MouseEventArgs e)
