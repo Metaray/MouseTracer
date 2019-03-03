@@ -29,8 +29,14 @@ namespace MouseTracer
 
             redrawTimer = new Timer();
             redrawTimer.Interval = 200;
+            redrawTimer.Tick += (object sender, EventArgs e) => 
+            {
+                if (running)
+                {
+                    this.Refresh();
+                }
+            };
             redrawTimer.Start();
-            redrawTimer.Tick += (object sender, EventArgs e) => { this.Refresh(); };
         }
 
         private void ResetTrace()
@@ -79,18 +85,21 @@ namespace MouseTracer
         {
             get
             {
-                Rectangle tmp = this.ClientRectangle;
-                tmp.Y += 24; tmp.Height -= 24;
-                return tmp;
+                Rectangle area = this.ClientRectangle;
+                int menuHeight = MainMenu.Height;
+                area.Y += menuHeight;
+                area.Height -= menuHeight;
+                return area;
             }
         }
 
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
+
             Graphics graph = e.Graphics;
             graph.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceCopy;
-            graph.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.Bilinear;
+            graph.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.Low;
 
             Rectangle view = PreviewArea;
             // if "black bars" on top and bottom else on sides
