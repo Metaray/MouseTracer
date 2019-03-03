@@ -9,9 +9,12 @@ namespace MouseTracer
     class StatCollector : IDisposable
     {
         private bool running = false;
-        private double distance = 0.0f;
-        private uint lclicks = 0, rclicks = 0;
-        private int prevx = -1, prevy = -1;
+        private bool hasPrevious = false;
+
+        private double traveledPx = 0.0;
+        private uint leftClicks = 0, rightClicks = 0;
+
+        private int pvX = -1, pvY = -1;
 
         public StatCollector()
         {
@@ -27,33 +30,48 @@ namespace MouseTracer
         {
             if (running != state)
             {
-                prevx = -1;
-                prevy = -1;
+                hasPrevious = false;
             }
             running = state;
         }
 
         private void DoMouseEvent(object sender, MouseEventArgs e)
         {
-            if (!running) return;
-            if (prevx != -1)
+            if (!running)
             {
-                distance += Math.Sqrt(Math.Pow(prevx - e.X, 2) + Math.Pow(prevy - e.Y, 2));
+                return;
             }
-            if (e.Button == MouseButtons.Left) ++lclicks;
-            if (e.Button == MouseButtons.Right) ++rclicks;
-            prevx = e.X;
-            prevy = e.Y;
+
+            if (e.Button == MouseButtons.Left)
+            {
+                leftClicks++;
+            }
+            else if (e.Button == MouseButtons.Right)
+            {
+                rightClicks++;
+            }
+
+            if (hasPrevious)
+            {
+                traveledPx += Math.Sqrt(Math.Pow(pvX - e.X, 2) + Math.Pow(pvY - e.Y, 2));
+            }
+            else
+            {
+                hasPrevious = true;
+            }
+            pvX = e.X;
+            pvY = e.Y;
         }
 
         public void DisplayStats()
         {
-            MessageBox.Show(String.Format(
-                "Distance traveled: {0}px\nLeft clicks: {1}\nRight clicks: {2}",
-                (int)distance,
-                lclicks,
-                rclicks)
-                , "Statistics");
+            MessageBox.Show(
+                $"Distance traveled: {(int)traveledPx}px\n" +
+                $"Left clicks: {leftClicks}\n" +
+                $"Right clicks: {rightClicks}",
+
+                "Statistics"
+            );
         }
     }
 }
