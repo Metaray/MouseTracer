@@ -9,10 +9,11 @@ namespace MouseTracer
     class StatCollector : IDisposable
     {
         private bool running = false;
-        private bool hasPrevious = false;
+        private bool hasPreviousPoint = false;
 
         private double traveledPx = 0.0;
         private uint leftClicks = 0, rightClicks = 0;
+        private System.Diagnostics.Stopwatch runTimeCounter = new System.Diagnostics.Stopwatch();
 
         private int pvX = -1, pvY = -1;
 
@@ -26,12 +27,30 @@ namespace MouseTracer
             MouseHook.MouseAction -= DoMouseEvent;
         }
 
+        public TimeSpan RunningTime
+        {
+            get
+            {
+                return runTimeCounter.Elapsed;
+            }
+        }
+
         public void SetRunning(bool state)
         {
             if (running != state)
             {
-                hasPrevious = false;
+                hasPreviousPoint = false;
             }
+
+            if (state)
+            {
+                runTimeCounter.Start();
+            }
+            else
+            {
+                runTimeCounter.Stop();
+            }
+
             running = state;
         }
 
@@ -51,13 +70,13 @@ namespace MouseTracer
                 rightClicks++;
             }
 
-            if (hasPrevious)
+            if (hasPreviousPoint)
             {
                 traveledPx += Math.Sqrt(Math.Pow(pvX - e.X, 2) + Math.Pow(pvY - e.Y, 2));
             }
             else
             {
-                hasPrevious = true;
+                hasPreviousPoint = true;
             }
             pvX = e.X;
             pvY = e.Y;
@@ -66,6 +85,7 @@ namespace MouseTracer
         public void DisplayStats()
         {
             MessageBox.Show(
+                $"Time spent tracing: {RunningTime:hh\\:mm\\:ss}\n" +
                 $"Distance traveled: {(int)traveledPx}px\n" +
                 $"Left clicks: {leftClicks}\n" +
                 $"Right clicks: {rightClicks}",
