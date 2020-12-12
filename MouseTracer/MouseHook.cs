@@ -11,59 +11,73 @@ namespace MouseTracer
     public static class MouseHook
     {
         private static Thread hookThread;
-
         private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
-
-        // Without Pin garbage collector destroys callback procedure
-        private static LowLevelMouseProc hookProcPin = HookCallback;
+        private static LowLevelMouseProc hookProcPin = HookCallback; // Without Pin garbage collector destroys callback procedure
         private static SafeHookHandle hookHandle;
 
-        // Times in milliseconds
-        private static uint lastMoveTime = 0;
-        public static uint MoveEventDelay = 10;
+        public static uint MoveEventDelayMs = 10;
+        private static uint lastMoveTimeMs = 0;
+        private const uint MaxQueuedEvents = 100;
+        private static ConcurrentQueue<CallbackData> hookEvents;
 
         public delegate void MouseEventHandler(object sender, MouseEventArgs e);
         public static event MouseEventHandler MouseAction = delegate { };
-
         private static System.Windows.Forms.Timer sendTimer;
-        private static ConcurrentQueue<MouseEventArgs> events;
 
         static MouseHook()
         {
-            events = new ConcurrentQueue<MouseEventArgs>();
+            hookEvents = new ConcurrentQueue<CallbackData>();
 
             sendTimer = new System.Windows.Forms.Timer();
-            sendTimer.Interval = 10;
+            sendTimer.Interval = 50;
             sendTimer.Start();
             sendTimer.Tick += SendTimer_Tick;
         }
 
-        private static void HookThreadLoop()
-        {
-            hookHandle = SetHook(hookProcPin);
-            Application.Run();
-        }
-
         private static void SendTimer_Tick(object sender, EventArgs e)
         {
-            MouseEventArgs args;
-            while (events.TryDequeue(out args))
+            while (hookEvents.TryDequeue(out var evt))
             {
-                MouseAction(null, args);
+                if (evt.Message == MouseMessages.WM_MOUSEMOVE)
+                {
+                    MouseAction(null, new MouseEventArgs(MouseButtons.None, 0, evt.Data.pt.x, evt.Data.pt.y, 0));
+                }
+                else if (evt.Message == MouseMessages.WM_LBUTTONDOWN)
+                {
+                    MouseAction(null, new MouseEventArgs(MouseButtons.Left, 1, evt.Data.pt.x, evt.Data.pt.y, 0));
+                }
+                else if (evt.Message == MouseMessages.WM_RBUTTONDOWN)
+                {
+                    MouseAction(null, new MouseEventArgs(MouseButtons.Right, 1, evt.Data.pt.x, evt.Data.pt.y, 0));
+                }
             }
         }
 
         public static void Start()
         {
-            hookThread = new Thread(HookThreadLoop);
-            hookThread.IsBackground = true;
-            hookThread.Start();
+            if (hookThread == null)
+            {
+                hookThread = new Thread(HookThreadLoop);
+                hookThread.IsBackground = true;
+                hookThread.Start();
+            }
         }
 
         public static void Stop()
         {
-            hookHandle.Dispose();
-            hookHandle = null;
+            if (hookThread != null)
+            {
+                hookHandle?.Dispose();
+                hookHandle = null;
+                hookThread.Abort();
+                hookThread = null;
+            }
+        }
+
+        private static void HookThreadLoop()
+        {
+            hookHandle = SetHook(hookProcPin);
+            Application.Run(); // Start message pump
         }
 
         private static SafeHookHandle SetHook(LowLevelMouseProc proc)
@@ -78,38 +92,43 @@ namespace MouseTracer
             }
         }
 
+        private static void EnqueueNewEvent(MouseMessages message, MSLLHOOKSTRUCT data)
+        {
+            if (hookEvents.Count < MaxQueuedEvents)
+            {
+                hookEvents.Enqueue(new CallbackData() { Message = message, Data = data });
+            }
+        }
+
         private static IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
             if (nCode >= 0)
             {
                 MSLLHOOKSTRUCT hookStruct = (MSLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(MSLLHOOKSTRUCT));
-
-                switch ((MouseMessages)wParam)
+                var message = (MouseMessages)wParam;
+                if (message == MouseMessages.WM_MOUSEMOVE)
                 {
-                case MouseMessages.WM_LBUTTONDOWN:
-                    events.Enqueue(new MouseEventArgs(MouseButtons.Left, 1, hookStruct.pt.x, hookStruct.pt.y, 0));
-                    break;
-
-                case MouseMessages.WM_RBUTTONDOWN:
-                    events.Enqueue(new MouseEventArgs(MouseButtons.Right, 1, hookStruct.pt.x, hookStruct.pt.y, 0));
-                    break;
-
-                case MouseMessages.WM_MOUSEMOVE:
-                    if (hookStruct.time - lastMoveTime >= MoveEventDelay)
+                    if (hookStruct.time - lastMoveTimeMs >= MoveEventDelayMs)
                     {
-                        events.Enqueue(new MouseEventArgs(MouseButtons.None, 0, hookStruct.pt.x, hookStruct.pt.y, 0));
-                        lastMoveTime = hookStruct.time;
+                        EnqueueNewEvent(message, hookStruct);
+                        lastMoveTimeMs = hookStruct.time;
                     }
-                    break;
-
-                default:
-                    break;
+                } 
+                else
+                {
+                    EnqueueNewEvent(message, hookStruct);
                 }
             }
             return CallNextHookEx(hookHandle, nCode, wParam, lParam);
         }
 
-        internal class SafeHookHandle : SafeHandleZeroOrMinusOneIsInvalid
+        private struct CallbackData
+        {
+            public MouseMessages Message;
+            public MSLLHOOKSTRUCT Data;
+        }
+
+        private class SafeHookHandle : SafeHandleZeroOrMinusOneIsInvalid
         {
             private SafeHookHandle() : base(true) {}
 
