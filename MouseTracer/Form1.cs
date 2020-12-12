@@ -103,19 +103,19 @@ namespace MouseTracer
 
             Rectangle view = PreviewArea;
             // if "black bars" on top and bottom else on sides
-            if (view.Width * art.image.Height <= art.image.Width * view.Height)
+            if (view.Width * art.Image.Height <= art.Image.Width * view.Height)
             {
-                int vsize = view.Width * art.image.Height / art.image.Width;
+                int vsize = view.Width * art.Image.Height / art.Image.Width;
                 view.Y = view.Y + (view.Height - vsize) / 2;
                 view.Height = vsize;
             }
             else
             {
-                int hsize = view.Height * art.image.Width / art.image.Height;
+                int hsize = view.Height * art.Image.Width / art.Image.Height;
                 view.X = view.X + (view.Width - hsize) / 2;
                 view.Width = hsize;
             }
-            graph.DrawImage(art.image, view);
+            graph.DrawImage(art.Image, view);
         }
 
         private void TrayIcon_MouseClick(object sender, MouseEventArgs e)
@@ -200,7 +200,7 @@ namespace MouseTracer
             DialogResult dlgResult = saveDlg.ShowDialog();
             if (dlgResult == DialogResult.OK)
             {
-                art.image.Save(saveDlg.FileName);
+                art.Image.Save(saveDlg.FileName);
                 if (!running)
                 {
                     unsavedChanges = false;

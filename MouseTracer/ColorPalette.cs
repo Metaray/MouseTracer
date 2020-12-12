@@ -1,39 +1,29 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Drawing;
 
 namespace MouseTracer
 {
-    abstract class ColorPalette
+    public abstract class ColorPalette
     {
-        public Color background;
+        public abstract Color Background { get; }
 
-        public abstract Color DirMod(Point a, Point b);
+        public abstract Color VectorColor(Point from, Point to);
     }
 
-    class PaletteBlackWhite : ColorPalette
+    public class PaletteBlackWhite : ColorPalette
     {
-        public PaletteBlackWhite()
-        {
-            this.background = Color.FromArgb(255, 255, 255);
-        }
+        public override Color Background => Color.FromArgb(255, 255, 255);
 
-        public override Color DirMod(Point a, Point b)
-        {
-            return Color.FromArgb(120, 0, 0, 0);
-        }
+        public override Color VectorColor(Point from, Point to) => Color.FromArgb(120, 0, 0, 0);
     }
 
-    class PaletteColorful : ColorPalette
+    public class PaletteColorful : ColorPalette
     {
-        public PaletteColorful()
-        {
-            this.background = Color.FromArgb(0, 0, 0);
-        }
+        public override Color Background => Color.FromArgb(0, 0, 0);
 
-        public override Color DirMod(Point a, Point b)
+        public override Color VectorColor(Point from, Point to)
         {
-            int dx = b.X - a.X, dy = b.Y - a.Y;
+            int dx = to.X - from.X, dy = to.Y - from.Y;
             if (dx != 0 || dy != 0)
             {
                 Color c = Utils.HsvToColor(Math.Atan2(dy, dx) / Math.PI / 2 + 0.5, 1.0, 255);

@@ -7,8 +7,8 @@ namespace MouseTracer
 {
     class Tracer : IDisposable
     {
-        public Graphics graph;
-        public Bitmap image;
+        private Graphics graph;
+        public Bitmap Image { get; private set; }
         private Rectangle screenBounds;
         private ColorPalette palette;
 
@@ -23,25 +23,24 @@ namespace MouseTracer
         {
             this.palette = palette;
 
-            // TODO: unsubscribe from MouseHook on destruct
-            MouseHook.MouseAction += DoMouseEvent;
-
             screenBounds = Utils.GetScreenSize();
-            image = new Bitmap(screenBounds.Width, screenBounds.Height);
-            graph = Graphics.FromImage(image);
+            Image = new Bitmap(screenBounds.Width, screenBounds.Height);
+            graph = Graphics.FromImage(Image);
             graph.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-            graph.Clear(palette.background);
+            graph.Clear(palette.Background);
 
             running = false;
             mouseHistory = new List<Point>();
             DrawClicks = true;
+
+            MouseHook.MouseAction += DoMouseEvent;
         }
 
         public void Dispose()
         {
             MouseHook.MouseAction -= DoMouseEvent;
             graph.Dispose();
-            image.Dispose();
+            Image.Dispose();
         }
 
         private void DoMouseEvent(object sender, MouseEventArgs e)
@@ -64,7 +63,7 @@ namespace MouseTracer
         {
             if (mouseHistory.Count >= 2)
             {
-                Color c = palette.DirMod(mouseHistory[0], mouseHistory[1]);
+                Color c = palette.VectorColor(mouseHistory[0], mouseHistory[1]);
                 graph.DrawLine(new Pen(c), mouseHistory[0], mouseHistory[1]);
             }
         }
@@ -73,8 +72,8 @@ namespace MouseTracer
         {
             if (DrawClicks && mouseHistory.Count >= 2)
             {
-                const int cw = 10;
-                Color c = palette.DirMod(mouseHistory[0], mouseHistory[1]);
+                const int cw = 10; // click circle diameter
+                Color c = palette.VectorColor(mouseHistory[0], mouseHistory[1]);
                 graph.FillEllipse(new SolidBrush(c), mouseHistory[0].X - cw / 2, mouseHistory[0].Y - cw / 2, cw, cw);
             }
         }
