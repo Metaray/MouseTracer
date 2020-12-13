@@ -1,21 +1,21 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 
 namespace MouseTracer
 {
-    class StatCollector : IDisposable
+    public class StatCollector : IDisposable
     {
         private bool running = false;
-        private bool hasPreviousPoint = false;
 
         private double traveledPx = 0.0;
-        private uint leftClicks = 0, rightClicks = 0;
+        private uint leftClicks = 0;
+        private uint rightClicks = 0;
         private System.Diagnostics.Stopwatch runTimeCounter = new System.Diagnostics.Stopwatch();
 
-        private int pvX = -1, pvY = -1;
+        private bool hasPreviousPoint = false;
+        private int prevX = 0;
+        private int prevY = 0;
 
         public StatCollector()
         {
@@ -27,22 +27,14 @@ namespace MouseTracer
             MouseHook.MouseAction -= DoMouseEvent;
         }
 
-        public TimeSpan RunningTime
+        public void SetRunning(bool run)
         {
-            get
-            {
-                return runTimeCounter.Elapsed;
-            }
-        }
-
-        public void SetRunning(bool state)
-        {
-            if (running != state)
+            if (running != run)
             {
                 hasPreviousPoint = false;
             }
 
-            if (state)
+            if (run)
             {
                 runTimeCounter.Start();
             }
@@ -51,47 +43,52 @@ namespace MouseTracer
                 runTimeCounter.Stop();
             }
 
-            running = state;
+            running = run;
         }
 
         private void DoMouseEvent(object sender, MouseEventArgs e)
         {
-            if (!running)
-            {
-                return;
-            }
+            if (!running) return;
 
-            if (e.Button == MouseButtons.Left)
+            if (e.Button.HasFlag(MouseButtons.Left))
             {
                 leftClicks++;
             }
-            else if (e.Button == MouseButtons.Right)
+            if (e.Button.HasFlag(MouseButtons.Right))
             {
                 rightClicks++;
             }
 
             if (hasPreviousPoint)
             {
-                traveledPx += Math.Sqrt(Math.Pow(pvX - e.X, 2) + Math.Pow(pvY - e.Y, 2));
+                traveledPx += Math.Sqrt((e.X - prevX) * (e.X - prevX) + (e.Y - prevY) * (e.Y - prevY));
             }
             else
             {
                 hasPreviousPoint = true;
             }
-            pvX = e.X;
-            pvY = e.Y;
+            prevX = e.X;
+            prevY = e.Y;
         }
+
+        private int GetDpi() => 750; // TODO: make this configurable somehow
 
         public void DisplayStats()
         {
-            MessageBox.Show(
-                $"Time spent tracing: {RunningTime:hh\\:mm\\:ss}\n" +
-                $"Distance traveled: {(int)traveledPx}px\n" +
-                $"Left clicks: {leftClicks}\n" +
-                $"Right clicks: {rightClicks}",
+            var msg = new StringBuilder();
+            
+            msg.Append($"Time spent tracing: {runTimeCounter.Elapsed:hh\\:mm\\:ss}");
+            msg.AppendLine();
 
-                "Statistics"
-            );
+            msg.Append($"Distance traveled: {(int)traveledPx}px ({traveledPx / GetDpi() * 0.0254:F2} m)");
+            msg.AppendLine();
+
+            msg.Append($"Left clicks: {leftClicks}");
+            msg.AppendLine();
+
+            msg.Append($"Right clicks: {rightClicks}");
+
+            MessageBox.Show(msg.ToString(), "Statistics");
         }
     }
 }
