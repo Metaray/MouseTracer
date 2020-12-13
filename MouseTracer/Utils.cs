@@ -4,7 +4,7 @@ using System.Windows.Forms;
 
 namespace MouseTracer
 {
-    static class Utils
+    public static class Utils
     {
         public static Rectangle GetScreenSize()
         {
@@ -41,6 +41,17 @@ namespace MouseTracer
                 return Color.FromArgb((int)t, (int)p, (int)v);
             else
                 return Color.FromArgb((int)v, (int)p, (int)q);
+        }
+
+        public static double Lerp(double a, double b, double x)
+        {
+            return a + x * (b - a);
+        }
+
+        public static double LerpGc(double a, double b, double x)
+        {
+            const double GC = 2.2;
+            return Math.Pow(Lerp(Math.Pow(a, GC), Math.Pow(b, GC), x), 1 / GC);
         }
     }
 }
