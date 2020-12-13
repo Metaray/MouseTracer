@@ -13,7 +13,7 @@ namespace MouseTracer
 
         private bool running = false;
         private bool unsavedChanges = false;
-        private bool isColored = true;
+        private ColorPalette currentPalette;
 
         public MainWindow()
         {
@@ -24,6 +24,15 @@ namespace MouseTracer
             trayIcon.Icon = this.Icon;
             trayIcon.MouseClick += TrayIcon_MouseClick;
             trayIcon.Visible = false;
+
+            hSVColorToolStripMenuItem.Tag = currentPalette = new PaletteColorful();
+            hSVColorToolStripMenuItem.Checked = true;
+            blackAndWhiteToolStripMenuItem.Tag = new PaletteBlackWhite();
+            iOGraphColorToolStripMenuItem.Tag = new PaletteInterpolated(new Color[]
+            {
+                Color.Magenta, Color.Yellow, Color.Cyan,
+                Color.Magenta, Color.Yellow, Color.Cyan,
+            });
 
             ResetTrace();
 
@@ -41,37 +50,24 @@ namespace MouseTracer
 
         private void ResetTrace()
         {
-            running = false;
+            SetRunning(false);
             unsavedChanges = false;
 
-            ColorPalette curPalette;
-            if (isColored)
-            {
-                curPalette = new PaletteColorful();
-            }
-            else
-            {
-                curPalette = new PaletteBlackWhite();
-            }
-
-            if (art != null)
-            {
-                art.Dispose();
-            }
-            art = new Tracer(curPalette);
+            art?.Dispose();
+            art = new Tracer(currentPalette);
             art.DrawClicks = drawClicksToolStripMenuItem.Checked;
+            //art.DrawMouseMove = drawPathToolStripMenuItem.Checked;
 
-            if (stats != null)
-            {
-                stats.Dispose();
-            }
+            stats?.Dispose();
             stats = new StatCollector();
+
+            Refresh();
         }
 
         private void SetRunning(bool run)
         {
-            art.SetRunning(run);
-            stats.SetRunning(run);
+            art?.SetRunning(run);
+            stats?.SetRunning(run);
             if (run)
             {
                 unsavedChanges = true;
@@ -226,33 +222,38 @@ namespace MouseTracer
             }
         }
 
-        private void coloredToolStripMenuItem_CheckStateChanged(object sender, EventArgs e)
+        private void statisticsToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if (coloredToolStripMenuItem.Checked == isColored)
-            {
-                return;
-            }
-
-            DialogResult isok = ConfirmSaveDialog("Changing color resets image. Save?", "Color change");
-            if (isok == DialogResult.OK)
-            {
-                isColored = coloredToolStripMenuItem.Checked;
-                ResetTrace();
-            }
-            else
-            {
-                coloredToolStripMenuItem.Checked = !coloredToolStripMenuItem.Checked;
-            }
+            stats.DisplayStats();
         }
 
-        private void drawClicksToolStripMenuItem_CheckStateChanged(object sender, EventArgs e)
+        private void drawClicksToolStripMenuItem_CheckedChanged(object sender, EventArgs e)
         {
             art.DrawClicks = drawClicksToolStripMenuItem.Checked;
         }
 
-        private void statisticsToolStripMenuItem_Click(object sender, EventArgs e)
+        private void drawPathToolStripMenuItem_CheckedChanged(object sender, EventArgs e)
         {
-            stats.DisplayStats();
+            //art.DrawMouseMove = drawPathToolStripMenuItem.Checked;
+        }
+
+        private void colorToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var menuItem = (ToolStripMenuItem)sender;
+            if (menuItem.Checked) 
+                return;
+
+            if (ConfirmSaveDialog("Changing color resets image. Save?", "Color change") != DialogResult.OK)
+                return;
+
+            foreach (ToolStripMenuItem item in menuItem.GetCurrentParent().Items)
+            {
+                item.Checked = false;
+            }
+            menuItem.Checked = true;
+            
+            currentPalette = (ColorPalette)menuItem.Tag;
+            ResetTrace();
         }
     }
 }
