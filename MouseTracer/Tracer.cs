@@ -5,19 +5,20 @@ using System.Collections.Generic;
 
 namespace MouseTracer
 {
-    class Tracer : IDisposable
+    public class Tracer : IDisposable
     {
-        private Graphics graph;
         public Bitmap Image { get; private set; }
+        private Graphics graph;
         private Rectangle screenBounds;
         private ColorPalette palette;
 
         private const int HistLength = 4;
         private List<Point> mouseHistory;
 
-        private bool running;
+        private bool running = false;
 
-        public bool DrawClicks { get; set; }
+        public bool DrawClicks { get; set; } = true;
+        public bool DrawMouseMove { get; set; } = true;
 
         public Tracer(ColorPalette palette)
         {
@@ -25,13 +26,14 @@ namespace MouseTracer
 
             screenBounds = Utils.GetScreenSize();
             Image = new Bitmap(screenBounds.Width, screenBounds.Height);
+            
             graph = Graphics.FromImage(Image);
             graph.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            graph.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceOver;
+            graph.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
             graph.Clear(palette.Background);
 
-            running = false;
             mouseHistory = new List<Point>();
-            DrawClicks = true;
 
             MouseHook.MouseAction += DoMouseEvent;
         }
@@ -51,36 +53,46 @@ namespace MouseTracer
             }
             if (UpdateMousePos(e.X - screenBounds.X, e.Y - screenBounds.Y))
             {
-                DrawMouseMove();
+                DoDrawMouseMove();
             }
-            if (e.Button == MouseButtons.Left || e.Button == MouseButtons.Right)
+            if (e.Button != MouseButtons.None)
             {
-                DrawMouseClick();
+                DoDrawMouseClick(e.Button);
             }
         }
 
-        private void DrawMouseMove()
+        private void DoDrawMouseMove()
         {
-            if (mouseHistory.Count >= 2)
+            if (DrawMouseMove && mouseHistory.Count >= 2)
             {
-                Color c = palette.VectorColor(mouseHistory[0], mouseHistory[1]);
-                graph.DrawLine(new Pen(c), mouseHistory[0], mouseHistory[1]);
+                Color c = palette.VectorColor(mouseHistory[1], mouseHistory[0]);
+                using (var p = new Pen(c))
+                    graph.DrawLine(p, mouseHistory[1], mouseHistory[0]);
             }
         }
 
-        private void DrawMouseClick()
+        private void DoDrawMouseClick(MouseButtons button)
         {
             if (DrawClicks && mouseHistory.Count >= 2)
             {
-                const int cw = 10; // click circle diameter
-                Color c = palette.VectorColor(mouseHistory[0], mouseHistory[1]);
-                graph.FillEllipse(new SolidBrush(c), mouseHistory[0].X - cw / 2, mouseHistory[0].Y - cw / 2, cw, cw);
+                const float cw = 15; // click circle diameter
+                Color c = palette.VectorColor(mouseHistory[1], mouseHistory[0]);
+                if (button == MouseButtons.Left)
+                {
+                    using (var b = new SolidBrush(c))
+                        graph.FillEllipse(b, mouseHistory[0].X - cw / 2, mouseHistory[0].Y - cw / 2, cw, cw);
+                }
+                else
+                {
+                    using (var p = new Pen(c))
+                        graph.DrawEllipse(p, mouseHistory[0].X - cw / 2, mouseHistory[0].Y - cw / 2, cw, cw);
+                }
             }
         }
 
         private bool UpdateMousePos(int x, int y)
         {
-            Point pos = new Point(x, y);
+            var pos = new Point(x, y);
             if (mouseHistory.Count > 0 && pos == mouseHistory[0])
             {
                 return false;

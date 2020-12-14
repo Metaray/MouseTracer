@@ -56,7 +56,7 @@ namespace MouseTracer
             art?.Dispose();
             art = new Tracer(currentPalette);
             art.DrawClicks = drawClicksToolStripMenuItem.Checked;
-            //art.DrawMouseMove = drawPathToolStripMenuItem.Checked;
+            art.DrawMouseMove = drawPathToolStripMenuItem.Checked;
 
             stats?.Dispose();
             stats = new StatCollector();
@@ -234,7 +234,7 @@ namespace MouseTracer
 
         private void drawPathToolStripMenuItem_CheckedChanged(object sender, EventArgs e)
         {
-            //art.DrawMouseMove = drawPathToolStripMenuItem.Checked;
+            art.DrawMouseMove = drawPathToolStripMenuItem.Checked;
         }
 
         private void colorToolStripMenuItem_Click(object sender, EventArgs e)
