@@ -19,6 +19,8 @@ namespace MouseTracer
 
     public class PaletteColorful : ColorPalette
     {
+        private const int alpha = 110;
+
         private double saturation;
 
         public PaletteColorful(double saturation=1.0)
@@ -38,7 +40,7 @@ namespace MouseTracer
             if (dx != 0 || dy != 0)
             {
                 Color c = Utils.HsvToColor(Math.Atan2(dy, dx) / Math.PI / 2 + 0.5, saturation, 255);
-                return Color.FromArgb(200, c.R, c.G, c.B);
+                return Color.FromArgb(alpha, c.R, c.G, c.B);
             }
             else
             {
@@ -49,6 +51,8 @@ namespace MouseTracer
 
     public class PaletteInterpolated : ColorPalette
     {
+        private const int alpha = 110;
+
         private Color[] colors;
 
         private bool useGc;
@@ -78,19 +82,19 @@ namespace MouseTracer
                 if (useGc)
                 {
                     return Color.FromArgb(
-                        200,
-                        (int)Utils.LerpGc(c1.R, c2.R, f),
-                        (int)Utils.LerpGc(c1.G, c2.G, f),
-                        (int)Utils.LerpGc(c1.B, c2.B, f)
+                        alpha,
+                        (int)Math.Round(Utils.LerpGc(c1.R, c2.R, f)),
+                        (int)Math.Round(Utils.LerpGc(c1.G, c2.G, f)),
+                        (int)Math.Round(Utils.LerpGc(c1.B, c2.B, f))
                     );
                 } 
                 else
                 {
                     return Color.FromArgb(
-                        200,
-                        (int)Utils.Lerp(c1.R, c2.R, f),
-                        (int)Utils.Lerp(c1.G, c2.G, f),
-                        (int)Utils.Lerp(c1.B, c2.B, f)
+                        alpha,
+                        (int)Math.Round(Utils.Lerp(c1.R, c2.R, f)),
+                        (int)Math.Round(Utils.Lerp(c1.G, c2.G, f)),
+                        (int)Math.Round(Utils.Lerp(c1.B, c2.B, f))
                     );
                 }
             }
