@@ -17,11 +17,12 @@ namespace MouseTracer
 
         public static uint MoveEventDelayMs = 10;
         private static uint lastMoveTimeMs = 0;
-        private const uint MaxQueuedEvents = 100;
+        
+        private const int SendIntervalMs = 50;
+        private const uint MaxQueuedEvents = 128;
         private static ConcurrentQueue<CallbackData> hookEvents;
 
-        public delegate void MouseEventHandler(object sender, MouseEventArgs e);
-        public static event MouseEventHandler MouseAction = delegate { };
+        public static event EventHandler<MouseEventArgs> MouseAction = delegate { };
         private static System.Windows.Forms.Timer sendTimer;
 
         static MouseHook()
@@ -29,13 +30,19 @@ namespace MouseTracer
             hookEvents = new ConcurrentQueue<CallbackData>();
 
             sendTimer = new System.Windows.Forms.Timer();
-            sendTimer.Interval = 50;
-            sendTimer.Start();
+            sendTimer.Interval = SendIntervalMs;
             sendTimer.Tick += SendTimer_Tick;
         }
 
         private static void SendTimer_Tick(object sender, EventArgs e)
         {
+            // TODO: make proper polling solution for debugging
+            if (Debugger.IsAttached)
+            {
+                MouseAction(null, new MouseEventArgs(MouseButtons.None, 0, Cursor.Position.X, Cursor.Position.Y, 0));
+                return;
+            }
+
             while (hookEvents.TryDequeue(out var evt))
             {
                 if (evt.Message == MouseMessages.WM_MOUSEMOVE)
@@ -55,16 +62,19 @@ namespace MouseTracer
 
         public static void Start()
         {
-            if (hookThread == null)
+            sendTimer.Start();
+            if (hookThread == null && !Debugger.IsAttached)
             {
                 hookThread = new Thread(HookThreadLoop);
                 hookThread.IsBackground = true;
+                hookThread.Priority = ThreadPriority.Highest;
                 hookThread.Start();
             }
         }
 
         public static void Stop()
         {
+            sendTimer.Stop();
             if (hookThread != null)
             {
                 hookHandle?.Dispose();
@@ -80,20 +90,18 @@ namespace MouseTracer
             Application.Run(); // Start message pump
         }
 
-        private static SafeHookHandle SetHook(LowLevelMouseProc proc)
+        private static SafeHookHandle SetHook(LowLevelMouseProc hookProc)
         {
-            using (Process curProcess = Process.GetCurrentProcess())
-            using (ProcessModule curModule = curProcess.MainModule)
-            {
-                SafeHookHandle hook = SetWindowsHookEx(WH_MOUSE_LL, proc, GetModuleHandle("user32"), 0);
-                if (hook.IsInvalid)
-                    throw new System.ComponentModel.Win32Exception();
-                return hook;
-            }
+            SafeHookHandle hook = SetWindowsHookEx(WH_MOUSE_LL, hookProc, IntPtr.Zero, 0);
+            if (hook.IsInvalid)
+                throw new System.ComponentModel.Win32Exception();
+            return hook;
         }
 
         private static void EnqueueNewEvent(MouseMessages message, MSLLHOOKSTRUCT data)
         {
+            // Drop events if consumer thread stalled to prevent runaway memory growth
+            // Max events >= Mouse polling frequency * Consumer polling interval
             if (hookEvents.Count < MaxQueuedEvents)
             {
                 hookEvents.Enqueue(new CallbackData() { Message = message, Data = data });
@@ -104,7 +112,7 @@ namespace MouseTracer
         {
             if (nCode >= 0)
             {
-                MSLLHOOKSTRUCT hookStruct = (MSLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(MSLLHOOKSTRUCT));
+                var hookStruct = Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
                 var message = (MouseMessages)wParam;
                 if (message == MouseMessages.WM_MOUSEMOVE)
                 {
@@ -138,6 +146,7 @@ namespace MouseTracer
             }
         }
 
+
         private const int WH_MOUSE_LL = 14;
 
         private enum MouseMessages
@@ -169,18 +178,13 @@ namespace MouseTracer
         }
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        private static extern SafeHookHandle SetWindowsHookEx(int idHook,
-          LowLevelMouseProc lpfn, IntPtr hMod, uint dwThreadId);
+        private static extern SafeHookHandle SetWindowsHookEx(int idHook, LowLevelMouseProc lpfn, IntPtr hMod, uint dwThreadId);
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool UnhookWindowsHookEx(IntPtr hhk);
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        private static extern IntPtr CallNextHookEx(SafeHookHandle hhk, int nCode,
-          IntPtr wParam, IntPtr lParam);
-
-        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        private static extern IntPtr GetModuleHandle(string lpModuleName);
+        private static extern IntPtr CallNextHookEx(SafeHookHandle hhk, int nCode, IntPtr wParam, IntPtr lParam);
     }
 }
