@@ -13,7 +13,7 @@ namespace MouseTracer
         private ColorPalette palette;
 
         private const int HistLength = 4;
-        private List<Point> mouseHistory;
+        private List<Point> mouseHistory = new List<Point>();
 
         private bool running = false;
 
@@ -32,25 +32,34 @@ namespace MouseTracer
             graph.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceOver;
             graph.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
             graph.Clear(palette.Background);
-
-            mouseHistory = new List<Point>();
-
-            MouseHook.MouseAction += DoMouseEvent;
         }
 
         public void Dispose()
         {
-            MouseHook.MouseAction -= DoMouseEvent;
+            SetRunning(false);
             graph.Dispose();
             Image.Dispose();
         }
 
+        public void SetRunning(bool run)
+        {
+            if (run == running) return;
+
+            if (run)
+            {
+                mouseHistory.Clear();
+                MouseHook.MouseAction += DoMouseEvent;
+            }
+            else
+            {
+                MouseHook.MouseAction -= DoMouseEvent;
+            }
+
+            running = run;
+        }
+
         private void DoMouseEvent(object sender, MouseEventArgs e)
         {
-            if (!running)
-            {
-                return;
-            }
             if (UpdateMousePos(e.X - screenBounds.X, e.Y - screenBounds.Y))
             {
                 DoDrawMouseMove();
@@ -103,15 +112,6 @@ namespace MouseTracer
                 mouseHistory.RemoveAt(HistLength);
             }
             return true;
-        }
-
-        public void SetRunning(bool run)
-        {
-            if (run)
-            {
-                mouseHistory.Clear();
-            }
-            running = run;
         }
     }
 }

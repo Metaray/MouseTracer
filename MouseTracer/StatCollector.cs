@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Text;
 using System.Windows.Forms;
 
@@ -17,30 +17,27 @@ namespace MouseTracer
         private int prevX = 0;
         private int prevY = 0;
 
-        public StatCollector()
-        {
-            MouseHook.MouseAction += DoMouseEvent;
-        }
+        public StatCollector() { }
 
         public void Dispose()
         {
-            MouseHook.MouseAction -= DoMouseEvent;
+            SetRunning(false);
         }
 
         public void SetRunning(bool run)
         {
-            if (running != run)
-            {
-                hasPreviousPoint = false;
-            }
-
+            if (running == run) return;
+            
             if (run)
             {
                 runTimeCounter.Start();
+                hasPreviousPoint = false;
+                MouseHook.MouseAction += DoMouseEvent;
             }
             else
             {
                 runTimeCounter.Stop();
+                MouseHook.MouseAction -= DoMouseEvent;
             }
 
             running = run;
@@ -48,8 +45,6 @@ namespace MouseTracer
 
         private void DoMouseEvent(object sender, MouseEventArgs e)
         {
-            if (!running) return;
-
             if (e.Button.HasFlag(MouseButtons.Left))
             {
                 leftClicks++;
@@ -80,9 +75,9 @@ namespace MouseTracer
             msg.AppendLine($"Time spent tracing: {TimeTracing:h\\:mm\\:ss}");
 
             msg.AppendLine($"Distance traveled: {(int)traveledPx}px ({traveledPx / Utils.GetPxPerCm():F1} cm)");
-
+            
             msg.AppendLine($"Left clicks: {leftClicks}");
-
+            
             msg.Append($"Right clicks: {rightClicks}");
 
             MessageBox.Show(msg.ToString(), "Statistics");

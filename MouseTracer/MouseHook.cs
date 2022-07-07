@@ -10,8 +10,9 @@ namespace MouseTracer
 {
     public static class MouseHook
     {
-        private static Thread hookThread;
         private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
+        
+        private static Thread hookThread;
         private static LowLevelMouseProc hookProcPin = HookCallback; // Without Pin garbage collector destroys callback procedure
         private static SafeHookHandle hookHandle;
 
@@ -20,15 +21,13 @@ namespace MouseTracer
         
         private const int SendIntervalMs = 50;
         private const uint MaxQueuedEvents = 128;
-        private static ConcurrentQueue<CallbackData> hookEvents;
+        private static ConcurrentQueue<CallbackData> hookEvents = new ConcurrentQueue<CallbackData>();
 
         public static event EventHandler<MouseEventArgs> MouseAction = delegate { };
         private static System.Windows.Forms.Timer sendTimer;
 
         static MouseHook()
         {
-            hookEvents = new ConcurrentQueue<CallbackData>();
-
             sendTimer = new System.Windows.Forms.Timer();
             sendTimer.Interval = SendIntervalMs;
             sendTimer.Tick += SendTimer_Tick;
@@ -86,17 +85,14 @@ namespace MouseTracer
 
         private static void HookThreadLoop()
         {
-            hookHandle = SetHook(hookProcPin);
+            hookHandle = SetWindowsHookEx(WH_MOUSE_LL, hookProcPin, IntPtr.Zero, 0);
+            if (hookHandle.IsInvalid)
+            {
+                throw new System.ComponentModel.Win32Exception();
+            }
             Application.Run(); // Start message pump
         }
 
-        private static SafeHookHandle SetHook(LowLevelMouseProc hookProc)
-        {
-            SafeHookHandle hook = SetWindowsHookEx(WH_MOUSE_LL, hookProc, IntPtr.Zero, 0);
-            if (hook.IsInvalid)
-                throw new System.ComponentModel.Win32Exception();
-            return hook;
-        }
 
         private static void EnqueueNewEvent(MouseMessages message, MSLLHOOKSTRUCT data)
         {

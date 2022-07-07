@@ -191,6 +191,7 @@ namespace MouseTracer
         private DialogResult ShowFileSaveDialog()
         {
             SaveFileDialog saveDlg = new SaveFileDialog();
+            saveDlg.FileName = string.Format("Trace ({0:%h} hours {0:%m} minutes {0:%s} seconds).png", stats.TimeTracing);
             saveDlg.Filter = "PNG Image|*.png";
             saveDlg.AddExtension = true;
             DialogResult dlgResult = saveDlg.ShowDialog();
