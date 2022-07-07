@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Drawing;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 namespace MouseTracer
@@ -18,6 +19,37 @@ namespace MouseTracer
             }
             return new Rectangle(minx, miny, maxx - minx, maxy - miny);
         }
+
+
+        private const uint SPI_GETMOUSESPEED = 0x0070;
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool SystemParametersInfo(uint uiAction, uint uiParam, ref int pvParam, uint fWinIni);
+
+
+        public static double GetPxPerCm()
+        {
+            const double cm2inch = 2.54;
+
+            // TODO: Make mouse dpi configurable since there isn't a universal way to get it automatically
+            double dpi = 800;
+
+            // Low level hook is affected by Windows sensetivity setting; account for it.
+            double winSensMult = 1;
+            int winSensVal = 10;
+            if (SystemParametersInfo(SPI_GETMOUSESPEED, 0, ref winSensVal, 0))
+            {
+                var mapping = new double[] { 1.0 / 32, 1.0 / 16, 1.0 / 4, 1.0 / 2, 3.0 / 4, 1.0, 3.0 / 2, 2.0, 5.0 / 2, 3.0, 7.0 / 2 };
+                if (0 < winSensVal && winSensVal <= 20)
+                {
+                    winSensMult = mapping[winSensVal / 2];
+                }
+            }
+
+            return dpi * winSensMult / cm2inch;
+        }
+
 
         public static Color HsvToColor(double h, double s, double v)
         {
@@ -42,6 +74,7 @@ namespace MouseTracer
             else
                 return Color.FromArgb((int)v, (int)p, (int)q);
         }
+        
 
         public static double Lerp(double a, double b, double x)
         {

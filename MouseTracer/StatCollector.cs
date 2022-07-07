@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Text;
 using System.Windows.Forms;
 
@@ -71,20 +71,17 @@ namespace MouseTracer
             prevY = e.Y;
         }
 
-        private int GetDpi() => 750; // TODO: make this configurable somehow
+        public TimeSpan TimeTracing => runTimeCounter.Elapsed;
 
         public void DisplayStats()
         {
             var msg = new StringBuilder();
             
-            msg.Append($"Time spent tracing: {runTimeCounter.Elapsed:hh\\:mm\\:ss}");
-            msg.AppendLine();
+            msg.AppendLine($"Time spent tracing: {TimeTracing:h\\:mm\\:ss}");
 
-            msg.Append($"Distance traveled: {(int)traveledPx}px ({traveledPx / GetDpi() * 0.0254:F2} m)");
-            msg.AppendLine();
+            msg.AppendLine($"Distance traveled: {(int)traveledPx}px ({traveledPx / Utils.GetPxPerCm():F1} cm)");
 
-            msg.Append($"Left clicks: {leftClicks}");
-            msg.AppendLine();
+            msg.AppendLine($"Left clicks: {leftClicks}");
 
             msg.Append($"Right clicks: {rightClicks}");
 
