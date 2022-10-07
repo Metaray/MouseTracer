@@ -2,7 +2,7 @@
 
 Create pretty images by drawing your mouse movements and clicks.
 
-## Example Gallery
+## Examples gallery
 
 - Browsing internet for 2 hours
 

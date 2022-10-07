@@ -2,6 +2,7 @@
 using System.Drawing;
 using System.Windows.Forms;
 using System.Collections.Generic;
+using MouseTracer.Palettes;
 
 namespace MouseTracer
 {
@@ -64,6 +65,7 @@ namespace MouseTracer
             {
                 DoDrawMouseMove();
             }
+
             if (e.Button != MouseButtons.None)
             {
                 DoDrawMouseClick(e.Button);
@@ -74,9 +76,11 @@ namespace MouseTracer
         {
             if (DrawMouseMove && mouseHistory.Count >= 2)
             {
-                Color c = palette.VectorColor(mouseHistory[1], mouseHistory[0]);
+                var c = palette.VectorColor(mouseHistory[1], mouseHistory[0]);
                 using (var p = new Pen(c))
+                {
                     graph.DrawLine(p, mouseHistory[1], mouseHistory[0]);
+                }
             }
         }
 
@@ -85,16 +89,20 @@ namespace MouseTracer
             if (DrawClicks && mouseHistory.Count >= 2)
             {
                 const float cw = 15; // click circle diameter
-                Color c = palette.VectorColor(mouseHistory[1], mouseHistory[0]);
+                var c = palette.VectorColor(mouseHistory[1], mouseHistory[0]);
                 if (button == MouseButtons.Left)
                 {
                     using (var b = new SolidBrush(c))
+                    {
                         graph.FillEllipse(b, mouseHistory[0].X - cw / 2, mouseHistory[0].Y - cw / 2, cw, cw);
+                    }
                 }
                 else
                 {
                     using (var p = new Pen(c))
+                    {
                         graph.DrawEllipse(p, mouseHistory[0].X - cw / 2, mouseHistory[0].Y - cw / 2, cw, cw);
+                    }
                 }
             }
         }
@@ -102,15 +110,18 @@ namespace MouseTracer
         private bool UpdateMousePos(int x, int y)
         {
             var pos = new Point(x, y);
+            
             if (mouseHistory.Count > 0 && pos == mouseHistory[0])
             {
                 return false;
             }
+
             mouseHistory.Insert(0, pos);
             if (mouseHistory.Count > HistLength)
             {
                 mouseHistory.RemoveAt(HistLength);
             }
+
             return true;
         }
     }
