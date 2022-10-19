@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Windows.Forms;
 
 namespace MouseTracer
@@ -16,10 +17,25 @@ namespace MouseTracer
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
-            MouseHook = new LowLevelHook();
+            DebuggingHook dbgHook = null;
+            if (Debugger.IsAttached)
+            {
+                MouseHook = dbgHook = new DebuggingHook();
+            }
+            else
+            {
+                MouseHook = new LowLevelHook();
+            }
             
-            MouseHook.Start();
-            Application.Run(new MainWindow());
+            var window = new MainWindow();
+
+            if (dbgHook != null)
+            {
+                dbgHook.TrackedWindow = window;
+            }
+
+			MouseHook.Start();
+			Application.Run(window);
             MouseHook.Stop();
         }
     }
