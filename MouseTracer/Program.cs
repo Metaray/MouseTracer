@@ -1,13 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace MouseTracer
 {
-    static class Program
+    internal static class Program
     {
+        public static MouseHook MouseHook;
+
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
@@ -16,6 +15,9 @@ namespace MouseTracer
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+
+            MouseHook = new LowLevelHook();
+            
             MouseHook.Start();
             Application.Run(new MainWindow());
             MouseHook.Stop();

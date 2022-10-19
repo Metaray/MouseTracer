@@ -32,12 +32,12 @@ namespace MouseTracer
             {
                 runTimeCounter.Start();
                 hasPreviousPoint = false;
-                MouseHook.MouseAction += DoMouseEvent;
+                Program.MouseHook.MouseAction += DoMouseEvent;
             }
             else
             {
                 runTimeCounter.Stop();
-                MouseHook.MouseAction -= DoMouseEvent;
+				Program.MouseHook.MouseAction -= DoMouseEvent;
             }
 
             running = run;

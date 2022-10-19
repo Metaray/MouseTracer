@@ -49,11 +49,11 @@ namespace MouseTracer
             if (run)
             {
                 mouseHistory.Clear();
-                MouseHook.MouseAction += DoMouseEvent;
+				Program.MouseHook.MouseAction += DoMouseEvent;
             }
             else
             {
-                MouseHook.MouseAction -= DoMouseEvent;
+				Program.MouseHook.MouseAction -= DoMouseEvent;
             }
 
             running = run;
