@@ -35,7 +35,7 @@ namespace MouseTracer
 
         protected virtual void NotifyMouseAction(MouseEventArgs args)
         {
-            MouseAction?.Invoke(null, args);
+            MouseAction?.Invoke(this, args);
         }
 
         public virtual void Start()

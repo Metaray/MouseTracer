@@ -7,7 +7,7 @@ using System.Threading;
 
 namespace MouseTracer
 {
-	public class LowLevelHook : MouseHook, IDisposable
+	public class LowLevelHook : MouseHook
 	{
 		private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
 
@@ -19,17 +19,18 @@ namespace MouseTracer
 
 		private uint lastMoveTimeMs = 0;
 
-		public uint MoveEventDelayMs = 10;
+		private readonly uint moveEventDelayMs;
 
-		public LowLevelHook()
+		public LowLevelHook(uint minMoveDelay)
 			: base()
 		{
-			hookProcPin = HookCallback;
-		}
+			if (Debugger.IsAttached)
+			{
+				Trace.TraceWarning("Low level hook will not start when debugger is present");
+			}
 
-		public void Dispose()
-		{
-			Stop();
+			hookProcPin = HookCallback;
+			moveEventDelayMs = minMoveDelay;
 		}
 
 		public override void Start()
@@ -72,19 +73,19 @@ namespace MouseTracer
 
 		private void EnqueueNewEvent(MouseMessages message, MSLLHOOKSTRUCT data)
 		{
-			if (message == MouseMessages.WM_MOUSEMOVE)
+			switch (message)
 			{
-				base.EnqueueNewEvent(new MouseEventArgs(MouseButtons.None, 0, data.pt.x, data.pt.y, 0));
-			}
+				case MouseMessages.WM_MOUSEMOVE:
+					EnqueueNewEvent(new MouseEventArgs(MouseButtons.None, 0, data.pt.x, data.pt.y, 0));
+					break;
 
-			if (message == MouseMessages.WM_LBUTTONDOWN)
-			{
-				base.EnqueueNewEvent(new MouseEventArgs(MouseButtons.Left, 1, data.pt.x, data.pt.y, 0));
-			}
-
-			if (message == MouseMessages.WM_RBUTTONDOWN)
-			{
-				base.EnqueueNewEvent(new MouseEventArgs(MouseButtons.Right, 1, data.pt.x, data.pt.y, 0));
+				case MouseMessages.WM_LBUTTONDOWN:
+					EnqueueNewEvent(new MouseEventArgs(MouseButtons.Left, 1, data.pt.x, data.pt.y, 0));
+					break;
+				
+				case MouseMessages.WM_RBUTTONDOWN:
+					EnqueueNewEvent(new MouseEventArgs(MouseButtons.Right, 1, data.pt.x, data.pt.y, 0));
+					break;
 			}
 		}
 
@@ -96,7 +97,7 @@ namespace MouseTracer
 				var message = (MouseMessages)wParam;
 				if (message == MouseMessages.WM_MOUSEMOVE)
 				{
-					if (hookStruct.time - lastMoveTimeMs >= MoveEventDelayMs)
+					if (hookStruct.time - lastMoveTimeMs >= moveEventDelayMs)
 					{
 						EnqueueNewEvent(message, hookStruct);
 						lastMoveTimeMs = hookStruct.time;

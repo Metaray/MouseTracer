@@ -17,25 +17,17 @@ namespace MouseTracer
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
-            DebuggingHook dbgHook = null;
             if (Debugger.IsAttached)
             {
-                MouseHook = dbgHook = new DebuggingHook();
+                MouseHook = new PollingHook(16);
             }
             else
             {
-                MouseHook = new LowLevelHook();
+                MouseHook = new LowLevelHook(5);
             }
             
-            var window = new MainWindow();
-
-            if (dbgHook != null)
-            {
-                dbgHook.TrackedWindow = window;
-            }
-
 			MouseHook.Start();
-			Application.Run(window);
+			Application.Run(new MainWindow());
             MouseHook.Stop();
         }
     }
