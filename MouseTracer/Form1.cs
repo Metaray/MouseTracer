@@ -7,9 +7,7 @@ namespace MouseTracer
 {
     public partial class MainWindow : Form
     {
-        private NotifyIcon trayIcon;
         private Tracer art;
-        private Timer redrawTimer;
         private StatCollector stats;
 
         private bool running = false;
@@ -20,11 +18,8 @@ namespace MouseTracer
         {
             InitializeComponent();
 
-            trayIcon = new NotifyIcon();
-            trayIcon.Text = "MouseTracer";
-            trayIcon.Icon = this.Icon;
+            trayIcon.Icon = Icon;
             trayIcon.MouseClick += TrayIcon_MouseClick;
-            trayIcon.Visible = false;
 
             hSVColorToolStripMenuItem.Tag = currentPalette = new PaletteColorful();
             hSVColorToolStripMenuItem.Checked = true;
@@ -36,17 +31,6 @@ namespace MouseTracer
             });
 
             ResetTrace();
-
-            redrawTimer = new Timer();
-            redrawTimer.Interval = 200;
-            redrawTimer.Tick += (object sender, EventArgs e) => 
-            {
-                if (running)
-                {
-                    this.Refresh();
-                }
-            };
-            redrawTimer.Start();
         }
 
         private void ResetTrace()
@@ -55,9 +39,11 @@ namespace MouseTracer
             unsavedChanges = false;
 
             art?.Dispose();
-            art = new Tracer(currentPalette);
-            art.DrawClicks = drawClicksToolStripMenuItem.Checked;
-            art.DrawMouseMove = drawPathToolStripMenuItem.Checked;
+            art = new Tracer(currentPalette)
+            {
+                DrawClicks = drawClicksToolStripMenuItem.Checked,
+                DrawMouseMove = drawPathToolStripMenuItem.Checked
+            };
 
             stats?.Dispose();
             stats = new StatCollector();
@@ -82,8 +68,8 @@ namespace MouseTracer
         {
             get
             {
-                Rectangle area = this.ClientRectangle;
-                int menuHeight = MainMenu.Height;
+                Rectangle area = ClientRectangle;
+                var menuHeight = MainMenu.Height;
                 area.Y += menuHeight;
                 area.Height -= menuHeight;
                 return area;
@@ -99,39 +85,47 @@ namespace MouseTracer
             graph.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.Low;
 
             Rectangle view = PreviewArea;
-            // if "black bars" on top and bottom else on sides
+            // if "black bars" on top and bottom or on sides
             if (view.Width * art.Image.Height <= art.Image.Width * view.Height)
             {
-                int vsize = view.Width * art.Image.Height / art.Image.Width;
-                view.Y = view.Y + (view.Height - vsize) / 2;
+                var vsize = view.Width * art.Image.Height / art.Image.Width;
+                view.Y += (view.Height - vsize) / 2;
                 view.Height = vsize;
             }
             else
             {
-                int hsize = view.Height * art.Image.Width / art.Image.Height;
-                view.X = view.X + (view.Width - hsize) / 2;
+                var hsize = view.Height * art.Image.Width / art.Image.Height;
+                view.X += (view.Width - hsize) / 2;
                 view.Width = hsize;
             }
             graph.DrawImage(art.Image, view);
         }
 
-        private void TrayIcon_MouseClick(object sender, MouseEventArgs e)
+		private void redrawTimer_Tick(object sender, EventArgs e)
+		{
+			if (running && WindowState != FormWindowState.Minimized)
+			{
+				Refresh();
+			}
+		}
+
+		private void TrayIcon_MouseClick(object sender, MouseEventArgs e)
         {
-            this.Show();
-            this.WindowState = FormWindowState.Normal;
+            Show();
+            WindowState = FormWindowState.Normal;
         }
 
         private void MainWindow_Resize(object sender, EventArgs e)
         {
-            if (this.WindowState == FormWindowState.Minimized)
+            if (WindowState == FormWindowState.Minimized)
             {
                 trayIcon.Visible = true;
-                this.Hide();
+                Hide();
             }
             else
             {
                 trayIcon.Visible = false;
-                this.Show();
+                Show();
             }
         }
 
@@ -149,7 +143,7 @@ namespace MouseTracer
         {
             if (unsavedChanges)
             {
-                DialogResult choice = MessageBox.Show("Do you want to reset picture?", "Reset", MessageBoxButtons.YesNo);
+                var choice = MessageBox.Show("Do you want to reset picture?", "Reset", MessageBoxButtons.YesNo);
                 if (choice != DialogResult.Yes)
                 {
                     return;
@@ -160,7 +154,7 @@ namespace MouseTracer
 
         private void exitToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            DialogResult canClose = ConfirmSaveDialog("Save Image before exiting?", "Exit");
+            var canClose = ConfirmSaveDialog("Save Image before exiting?", "Exit");
             if (canClose == DialogResult.OK)
             {
                 Application.Exit();
@@ -173,11 +167,11 @@ namespace MouseTracer
             {
                 return DialogResult.OK;
             }
-            DialogResult choice = MessageBox.Show(reason, title, MessageBoxButtons.YesNoCancel);
+            var choice = MessageBox.Show(reason, title, MessageBoxButtons.YesNoCancel);
             if (choice == DialogResult.Yes)
             {
-                DialogResult didsave = ShowFileSaveDialog();
-                if (didsave == DialogResult.OK)
+                var didSave = ShowFileSaveDialog();
+                if (didSave == DialogResult.OK)
                 {
                     return DialogResult.OK;
                 }
@@ -191,11 +185,14 @@ namespace MouseTracer
 
         private DialogResult ShowFileSaveDialog()
         {
-            SaveFileDialog saveDlg = new SaveFileDialog();
-            saveDlg.FileName = string.Format("Trace ({0:%h} hours {0:%m} minutes {0:%s} seconds).png", stats.TimeTracing);
-            saveDlg.Filter = "PNG Image|*.png";
-            saveDlg.AddExtension = true;
-            DialogResult dlgResult = saveDlg.ShowDialog();
+            var saveDlg = new SaveFileDialog
+            {
+                FileName = string.Format("Trace ({0:%h} hours {0:%m} minutes {0:%s} seconds).png", stats.TimeTracing),
+                Filter = "PNG Image|*.png",
+                AddExtension = true
+            };
+
+            var dlgResult = saveDlg.ShowDialog();
             if (dlgResult == DialogResult.OK)
             {
                 art.Image.Save(saveDlg.FileName);
@@ -216,7 +213,7 @@ namespace MouseTracer
         {
             if (e.CloseReason == CloseReason.UserClosing)
             {
-                DialogResult canClose = ConfirmSaveDialog("Save Image before exiting?", "Exit");
+                var canClose = ConfirmSaveDialog("Save Image before exiting?", "Exit");
                 if (canClose != DialogResult.OK)
                 {
                     e.Cancel = true;
