@@ -9,16 +9,17 @@ namespace MouseTracer
     public class Tracer : IDisposable
     {
         public Bitmap Image { get; private set; }
-        private Graphics graph;
-        private Rectangle screenBounds;
-        private ColorPalette palette;
+        private readonly Graphics graph;
+        private readonly Rectangle screenBounds;
+        private readonly ColorPalette palette;
 
         private const int HistLength = 4;
-        private List<Point> mouseHistory = new List<Point>();
+        private readonly List<Point> mouseHistory = new List<Point>();
 
         private bool running = false;
 
         public bool DrawClicks { get; set; } = true;
+
         public bool DrawMouseMove { get; set; } = true;
 
         public Tracer(ColorPalette palette)
@@ -61,68 +62,94 @@ namespace MouseTracer
 
         private void DoMouseEvent(object sender, MouseEventArgs e)
         {
-            if (UpdateMousePos(e.X - screenBounds.X, e.Y - screenBounds.Y))
+            UpdateMouseHistory(e);
+
+            if (DrawMouseMove)
             {
                 DoDrawMouseMove();
             }
 
-            if (e.Button != MouseButtons.None)
+            if (DrawClicks)
             {
                 DoDrawMouseClick(e.Button);
             }
         }
 
-        private void DoDrawMouseMove()
+		private void UpdateMouseHistory(MouseEventArgs e)
+		{
+			var pos = e.Location;
+			pos.X -= screenBounds.X;
+			pos.Y -= screenBounds.Y;
+
+			if (mouseHistory.Count > 0 && mouseHistory[0] == pos)
+			{
+				return;
+			}
+
+			mouseHistory.Insert(0, pos);
+			if (mouseHistory.Count > HistLength)
+			{
+				mouseHistory.RemoveAt(HistLength);
+			}
+		}
+
+		private void DoDrawMouseMove()
         {
-            if (DrawMouseMove && mouseHistory.Count >= 2)
+            if (mouseHistory.Count < 2)
             {
-                var c = palette.VectorColor(mouseHistory[1], mouseHistory[0]);
-                using (var p = new Pen(c))
-                {
-                    graph.DrawLine(p, mouseHistory[1], mouseHistory[0]);
-                }
+                return;
+            }
+
+            var prev = mouseHistory[1];
+			var cur = mouseHistory[0];
+            if (prev == cur)
+            {
+                return;
+            }
+
+			var c = palette.VectorColor(prev, cur);
+            using (var p = new Pen(c))
+            {
+                graph.DrawLine(p, prev, cur);
             }
         }
 
         private void DoDrawMouseClick(MouseButtons button)
         {
-            if (DrawClicks && mouseHistory.Count >= 2)
+			const float CCD = 15; // click circle diameter
+
+            if (button == MouseButtons.None || mouseHistory.Count < 2)
             {
-                const float cw = 15; // click circle diameter
-                var c = palette.VectorColor(mouseHistory[1], mouseHistory[0]);
-                if (button == MouseButtons.Left)
+                return;
+            }
+
+			var prev = mouseHistory[1];
+			var cur = mouseHistory[0];
+			var c = palette.VectorColor(prev, cur);
+
+            if (button.HasFlag(MouseButtons.Left))
+            {
+                using (var b = new SolidBrush(c))
                 {
-                    using (var b = new SolidBrush(c))
-                    {
-                        graph.FillEllipse(b, mouseHistory[0].X - cw / 2, mouseHistory[0].Y - cw / 2, cw, cw);
-                    }
+                    graph.FillEllipse(b, cur.X - CCD / 2, cur.Y - CCD / 2, CCD, CCD);
                 }
-                else
+            }
+
+			if (button.HasFlag(MouseButtons.Right))
+			{
+                using (var p = new Pen(c))
                 {
-                    using (var p = new Pen(c))
-                    {
-                        graph.DrawEllipse(p, mouseHistory[0].X - cw / 2, mouseHistory[0].Y - cw / 2, cw, cw);
-                    }
+                    graph.DrawEllipse(p, cur.X - CCD / 2, cur.Y - CCD / 2, CCD, CCD);
                 }
             }
-        }
 
-        private bool UpdateMousePos(int x, int y)
-        {
-            var pos = new Point(x, y);
-            
-            if (mouseHistory.Count > 0 && pos == mouseHistory[0])
-            {
-                return false;
-            }
-
-            mouseHistory.Insert(0, pos);
-            if (mouseHistory.Count > HistLength)
-            {
-                mouseHistory.RemoveAt(HistLength);
-            }
-
-            return true;
+			if ((button & ~(MouseButtons.Left | MouseButtons.Right)) != MouseButtons.None)
+			{
+				using (var p = new Pen(c))
+				{
+                    graph.DrawRectangle(p, cur.X - CCD / 2, cur.Y - CCD / 2, CCD, CCD);
+				}
+			}
         }
     }
 }
