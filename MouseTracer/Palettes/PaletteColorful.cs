@@ -5,22 +5,13 @@ namespace MouseTracer.Palettes
 {
 	public class PaletteColorful : ColorPalette
 	{
-		private const int alpha = 110;
+		public bool Symmetric { get; set; } = true;
 
-		private readonly double saturation;
+		public double Saturation { get; set; } = 1.0;
 
-		private readonly bool symmetric;
+		public double ColorOffset { get; set; } = 0.5;
 
-		public PaletteColorful(bool symmetric = true, double saturation = 1.0)
-		{
-			if (saturation < 0 || saturation > 1)
-			{
-				throw new ArgumentException("Saturation value outside [0; 1]");
-			}
-
-			this.symmetric = symmetric;
-			this.saturation = saturation;
-		}
+		private const int Alpha = 110;
 
 		public override Color Background => Color.FromArgb(0, 0, 0);
 
@@ -35,12 +26,12 @@ namespace MouseTracer.Palettes
 			}
 
 			var a = Math.Atan2(dy, dx) / (Math.PI * 2);
-			if (symmetric)
+			if (Symmetric)
 			{
 				a *= 2;
 			}
-			var c = Utils.HsvToColor(a + 0.5, saturation, 255);
-			return Color.FromArgb(alpha, c.R, c.G, c.B);
+			var c = Utils.HsvToColor(a + ColorOffset, Saturation, 255);
+			return Color.FromArgb(Alpha, c.R, c.G, c.B);
 		}
 	}
 }
