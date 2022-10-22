@@ -9,13 +9,16 @@ namespace MouseTracer.Palettes
 
 		private readonly double saturation;
 
-		public PaletteColorful(double saturation = 1.0)
+		private readonly bool symmetric;
+
+		public PaletteColorful(bool symmetric = true, double saturation = 1.0)
 		{
 			if (saturation < 0 || saturation > 1)
 			{
 				throw new ArgumentException("Saturation value outside [0; 1]");
 			}
 
+			this.symmetric = symmetric;
 			this.saturation = saturation;
 		}
 
@@ -31,7 +34,12 @@ namespace MouseTracer.Palettes
 				return Color.Black;
 			}
 
-			var c = Utils.HsvToColor(Math.Atan2(dy, dx) / Math.PI / 2 + 0.5, saturation, 255);
+			var a = Math.Atan2(dy, dx) / (Math.PI * 2);
+			if (symmetric)
+			{
+				a *= 2;
+			}
+			var c = Utils.HsvToColor(a + 0.5, saturation, 255);
 			return Color.FromArgb(alpha, c.R, c.G, c.B);
 		}
 	}

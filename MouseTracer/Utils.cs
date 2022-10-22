@@ -54,12 +54,22 @@ namespace MouseTracer
         public static Color HsvToColor(double h, double s, double v)
         {
             if (s == 0.0)
+            {
                 return Color.FromArgb((int)v, (int)v, (int)v);
+            }
+
+            h %= 1.0;
+            if (h < 0)
+            {
+                h += 1;
+            }
+
             int i = (int)(h * 6.0);
             double f = (h * 6.0) - i;
             double p = v * (1.0 - s);
             double q = v * (1.0 - s * f);
             double t = v * (1.0 - s * (1.0 - f));
+            
             i = i % 6;
             if (i == 0)
                 return Color.FromArgb((int)v, (int)t, (int)p);
