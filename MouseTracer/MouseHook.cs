@@ -10,11 +10,11 @@ namespace MouseTracer
         
         private const uint MaxQueuedEvents = 128;
         
-        private readonly ConcurrentQueue<MouseEventArgs> hookEvents = new ConcurrentQueue<MouseEventArgs>();
+        private readonly ConcurrentQueue<MouseStateEventArgs> hookEvents = new ConcurrentQueue<MouseStateEventArgs>();
 
         private readonly Timer sendTimer;
 
-		public event EventHandler<MouseEventArgs> MouseAction;
+		public event EventHandler<MouseStateEventArgs> MouseAction;
 
 		public MouseHook()
         {
@@ -33,7 +33,7 @@ namespace MouseTracer
             }
         }
 
-        protected virtual void NotifyMouseAction(MouseEventArgs args)
+        protected virtual void NotifyMouseAction(MouseStateEventArgs args)
         {
             MouseAction?.Invoke(this, args);
         }
@@ -48,7 +48,7 @@ namespace MouseTracer
             sendTimer.Stop();
         }
 
-        protected void EnqueueNewEvent(MouseEventArgs eventArgs)
+        protected void EnqueueNewEvent(MouseStateEventArgs eventArgs)
         {
             // Drop events if consumer thread stalled to prevent runaway memory growth
             // Max events >= Mouse polling frequency * Consumer polling interval

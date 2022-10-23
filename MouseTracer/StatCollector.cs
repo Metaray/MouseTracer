@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Text;
 using System.Windows.Forms;
+using System.Diagnostics;
 
 namespace MouseTracer
 {
@@ -11,7 +12,7 @@ namespace MouseTracer
         private double traveledPx = 0.0;
         private uint leftClicks = 0;
         private uint rightClicks = 0;
-        private System.Diagnostics.Stopwatch runTimeCounter = new System.Diagnostics.Stopwatch();
+        private readonly Stopwatch runTimeCounter = new Stopwatch();
 
         private bool hasPreviousPoint = false;
         private int prevX = 0;
@@ -43,13 +44,14 @@ namespace MouseTracer
             running = run;
         }
 
-        private void DoMouseEvent(object sender, MouseEventArgs e)
+        private void DoMouseEvent(object sender, MouseStateEventArgs e)
         {
-            if (e.Button.HasFlag(MouseButtons.Left))
+            if (e.Buttons.HasFlag(MouseButtons.Left))
             {
                 leftClicks++;
             }
-            if (e.Button.HasFlag(MouseButtons.Right))
+
+            if (e.Buttons.HasFlag(MouseButtons.Right))
             {
                 rightClicks++;
             }
@@ -62,6 +64,7 @@ namespace MouseTracer
             {
                 hasPreviousPoint = true;
             }
+
             prevX = e.X;
             prevY = e.Y;
         }

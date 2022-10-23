@@ -60,7 +60,7 @@ namespace MouseTracer
             running = run;
         }
 
-        private void DoMouseEvent(object sender, MouseEventArgs e)
+        private void DoMouseEvent(object sender, MouseStateEventArgs e)
         {
             UpdateMouseHistory(e);
 
@@ -71,13 +71,13 @@ namespace MouseTracer
 
             if (DrawClicks)
             {
-                DoDrawMouseClick(e.Button);
+                DoDrawMouseClick(e.Buttons);
             }
         }
 
-		private void UpdateMouseHistory(MouseEventArgs e)
+		private void UpdateMouseHistory(MouseStateEventArgs e)
 		{
-			var pos = e.Location;
+			var pos = e.Position;
 			pos.X -= screenBounds.X;
 			pos.Y -= screenBounds.Y;
 

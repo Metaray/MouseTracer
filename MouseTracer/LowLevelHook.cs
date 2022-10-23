@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Windows.Forms;
 using Microsoft.Win32.SafeHandles;
 using System.Threading;
+using System.Drawing;
 
 namespace MouseTracer
 {
@@ -20,6 +21,10 @@ namespace MouseTracer
 		private uint lastMoveTimeMs = 0;
 
 		private readonly uint moveEventDelayMs;
+
+		private Point prevPos;
+
+		private MouseButtons prevButtons;
 
 		public LowLevelHook(uint minMoveDelay)
 			: base()
@@ -73,20 +78,30 @@ namespace MouseTracer
 
 		private void EnqueueNewEvent(MouseMessages message, MSLLHOOKSTRUCT data)
 		{
+			var pos = new Point(data.pt.x, data.pt.y);
+			var buttons = MouseButtons.None;
+
 			switch (message)
 			{
 				case MouseMessages.WM_MOUSEMOVE:
-					EnqueueNewEvent(new MouseEventArgs(MouseButtons.None, 0, data.pt.x, data.pt.y, 0));
 					break;
 
 				case MouseMessages.WM_LBUTTONDOWN:
-					EnqueueNewEvent(new MouseEventArgs(MouseButtons.Left, 1, data.pt.x, data.pt.y, 0));
+					buttons = MouseButtons.Left;
 					break;
 				
 				case MouseMessages.WM_RBUTTONDOWN:
-					EnqueueNewEvent(new MouseEventArgs(MouseButtons.Right, 1, data.pt.x, data.pt.y, 0));
+					buttons = MouseButtons.Right;
 					break;
+
+				default:
+					return;
 			}
+
+			EnqueueNewEvent(new MouseStateEventArgs(pos, buttons, prevPos, prevButtons));
+
+			prevPos = pos;
+			prevButtons = buttons;
 		}
 
 		private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)

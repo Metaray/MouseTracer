@@ -9,7 +9,7 @@ namespace MouseTracer
 	{
 		private readonly Timer pollTimer;
 
-		private Point prevPos = new Point(-1234, -1234);
+		private Point prevPos;
 
 		private MouseButtons prevButtons;
 
@@ -55,7 +55,7 @@ namespace MouseTracer
 
 			if (pos != prevPos || pressed != MouseButtons.None)
 			{
-				NotifyMouseAction(new MouseEventArgs(pressed, pressed != MouseButtons.None ? 1 : 0, pos.X, pos.Y, 0));
+				NotifyMouseAction(new MouseStateEventArgs(pos, pressed, prevPos, prevButtons));
 			}
 
 			prevPos = pos;
