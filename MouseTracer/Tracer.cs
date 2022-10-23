@@ -9,12 +9,16 @@ namespace MouseTracer
     public class Tracer : IDisposable
     {
         public Bitmap Image { get; private set; }
+
         private readonly Graphics graph;
+
         private readonly Rectangle screenBounds;
+
         private readonly ColorPalette palette;
 
         private const int HistLength = 4;
-        private readonly List<Point> mouseHistory = new List<Point>();
+
+		private readonly List<MouseState> movesHistory = new List<MouseState>();
 
         private bool running = false;
 
@@ -49,7 +53,7 @@ namespace MouseTracer
 
             if (run)
             {
-                mouseHistory.Clear();
+                movesHistory.Clear();
 				Program.MouseHook.MouseAction += DoMouseEvent;
             }
             else
@@ -81,34 +85,35 @@ namespace MouseTracer
 			pos.X -= screenBounds.X;
 			pos.Y -= screenBounds.Y;
 
-			if (mouseHistory.Count > 0 && mouseHistory[0] == pos)
-			{
-				return;
-			}
-
-			mouseHistory.Insert(0, pos);
-			if (mouseHistory.Count > HistLength)
-			{
-				mouseHistory.RemoveAt(HistLength);
-			}
+			if (movesHistory.Count == 0 || movesHistory[0].Position != pos)
+            {
+                movesHistory.Insert(0, new MouseState(e.Position, e.Buttons));
+                if (movesHistory.Count > HistLength)
+                {
+                    movesHistory.RemoveAt(HistLength);
+                }
+            }
 		}
 
 		private void DoDrawMouseMove()
         {
-            if (mouseHistory.Count < 2)
+            if (movesHistory.Count < 2)
             {
                 return;
             }
 
-            var prev = mouseHistory[1];
-			var cur = mouseHistory[0];
+            var prev = movesHistory[1].Position;
+			var cur = movesHistory[0].Position;
             if (prev == cur)
             {
                 return;
             }
 
 			var c = palette.VectorColor(prev, cur);
-            using (var p = new Pen(c))
+            float w = (movesHistory[0].Buttons != MouseButtons.None) && (movesHistory[1].Buttons != MouseButtons.None)
+                ? 3.0f : 1.0f;
+
+			using (var p = new Pen(c, w))
             {
                 graph.DrawLine(p, prev, cur);
             }
@@ -118,18 +123,18 @@ namespace MouseTracer
         {
 			const float CCD = 15; // click circle diameter
 
-            if (button == MouseButtons.None || mouseHistory.Count < 2)
+            if (button == MouseButtons.None || movesHistory.Count < 2)
             {
                 return;
             }
 
-			var prev = mouseHistory[1];
-			var cur = mouseHistory[0];
+			var prev = movesHistory[1].Position;
+			var cur = movesHistory[0].Position;
 			var c = palette.VectorColor(prev, cur);
 
             if (button.HasFlag(MouseButtons.Left))
             {
-                using (var b = new SolidBrush(c))
+				using (var b = new SolidBrush(c))
                 {
                     graph.FillEllipse(b, cur.X - CCD / 2, cur.Y - CCD / 2, CCD, CCD);
                 }
@@ -150,6 +155,19 @@ namespace MouseTracer
                     graph.DrawRectangle(p, cur.X - CCD / 2, cur.Y - CCD / 2, CCD, CCD);
 				}
 			}
+        }
+
+        private class MouseState
+        {
+            public readonly Point Position;
+
+            public readonly MouseButtons Buttons;
+
+            public MouseState(Point position, MouseButtons buttons)
+            {
+                Position = position;
+                Buttons = buttons;
+            }
         }
     }
 }
