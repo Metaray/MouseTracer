@@ -79,7 +79,7 @@ namespace MouseTracer
 		private void EnqueueNewEvent(MouseMessages message, MSLLHOOKSTRUCT data)
 		{
 			var pos = new Point(data.pt.x, data.pt.y);
-			var buttons = MouseButtons.None;
+			var buttons = prevButtons;
 
 			switch (message)
 			{
@@ -87,11 +87,19 @@ namespace MouseTracer
 					break;
 
 				case MouseMessages.WM_LBUTTONDOWN:
-					buttons = MouseButtons.Left;
+					buttons |= MouseButtons.Left;
 					break;
 				
 				case MouseMessages.WM_RBUTTONDOWN:
-					buttons = MouseButtons.Right;
+					buttons |= MouseButtons.Right;
+					break;
+
+				case MouseMessages.WM_LBUTTONUP:
+					buttons &= ~MouseButtons.Left;
+					break;
+
+				case MouseMessages.WM_RBUTTONUP:
+					buttons &= ~MouseButtons.Right;
 					break;
 
 				default:
