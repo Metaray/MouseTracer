@@ -20,6 +20,8 @@ namespace MouseTracer
 
 		private readonly List<MouseState> movesHistory = new List<MouseState>();
 
+        private MouseButtons prevButtons;
+
         private bool running = false;
 
         public bool DrawClicks { get; set; } = true;
@@ -54,6 +56,7 @@ namespace MouseTracer
             if (run)
             {
                 movesHistory.Clear();
+                prevButtons = MouseButtons.None;
 				Program.MouseHook.MouseAction += DoMouseEvent;
             }
             else
@@ -75,8 +78,10 @@ namespace MouseTracer
 
             if (DrawClicks)
             {
-                DoDrawMouseClick(e.Pressed);
+                DoDrawMouseClick(e.Buttons & ~prevButtons);
             }
+
+            prevButtons = e.Buttons;
         }
 
 		private void UpdateMouseHistory(MouseStateEventArgs e)
@@ -87,7 +92,7 @@ namespace MouseTracer
 
 			if (movesHistory.Count == 0 || movesHistory[0].Position != pos)
             {
-                movesHistory.Insert(0, new MouseState(e.Position, e.Buttons));
+                movesHistory.Insert(0, new MouseState(pos, e.Buttons));
                 if (movesHistory.Count > HistLength)
                 {
                     movesHistory.RemoveAt(HistLength);

@@ -22,9 +22,7 @@ namespace MouseTracer
 
 		private readonly uint moveEventDelayMs;
 
-		private Point prevPos;
-
-		private MouseButtons prevButtons;
+		private MouseButtons buttonsState;
 
 		public LowLevelHook(uint minMoveDelay)
 			: base()
@@ -79,7 +77,6 @@ namespace MouseTracer
 		private void EnqueueNewEvent(MouseMessages message, MSLLHOOKSTRUCT data)
 		{
 			var pos = new Point(data.pt.x, data.pt.y);
-			var buttons = prevButtons;
 
 			switch (message)
 			{
@@ -87,29 +84,27 @@ namespace MouseTracer
 					break;
 
 				case MouseMessages.WM_LBUTTONDOWN:
-					buttons |= MouseButtons.Left;
+					buttonsState |= MouseButtons.Left;
 					break;
 				
 				case MouseMessages.WM_RBUTTONDOWN:
-					buttons |= MouseButtons.Right;
+                    buttonsState |= MouseButtons.Right;
 					break;
 
 				case MouseMessages.WM_LBUTTONUP:
-					buttons &= ~MouseButtons.Left;
+                    buttonsState &= ~MouseButtons.Left;
 					break;
 
 				case MouseMessages.WM_RBUTTONUP:
-					buttons &= ~MouseButtons.Right;
+                    buttonsState &= ~MouseButtons.Right;
 					break;
 
 				default:
+					// Don't send events for other messages
 					return;
 			}
 
-			EnqueueNewEvent(new MouseStateEventArgs(pos, buttons, prevPos, prevButtons));
-
-			prevPos = pos;
-			prevButtons = buttons;
+			EnqueueNewEvent(new MouseStateEventArgs(pos, buttonsState));
 		}
 
 		private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)

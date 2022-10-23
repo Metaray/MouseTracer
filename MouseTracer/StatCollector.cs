@@ -17,6 +17,7 @@ namespace MouseTracer
         private bool hasPreviousPoint = false;
         private int prevX = 0;
         private int prevY = 0;
+        private MouseButtons prevButtons;
 
         public StatCollector() { }
 
@@ -46,19 +47,21 @@ namespace MouseTracer
 
         private void DoMouseEvent(object sender, MouseStateEventArgs e)
         {
-            if (e.Pressed.HasFlag(MouseButtons.Left))
-            {
-                leftClicks++;
-            }
-
-            if (e.Pressed.HasFlag(MouseButtons.Right))
-            {
-                rightClicks++;
-            }
-
             if (hasPreviousPoint)
             {
                 traveledPx += Math.Sqrt((e.X - prevX) * (e.X - prevX) + (e.Y - prevY) * (e.Y - prevY));
+
+                var pressed = e.Buttons & ~prevButtons;
+
+                if (pressed.HasFlag(MouseButtons.Left))
+                {
+                    leftClicks++;
+                }
+
+                if (pressed.HasFlag(MouseButtons.Right))
+                {
+                    rightClicks++;
+                }
             }
             else
             {
@@ -67,6 +70,7 @@ namespace MouseTracer
 
             prevX = e.X;
             prevY = e.Y;
+            prevButtons = e.Buttons;
         }
 
         public TimeSpan TimeTracing => runTimeCounter.Elapsed;

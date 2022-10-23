@@ -53,7 +53,7 @@ namespace MouseTracer
 
 			if (pos != prevPos || buttons != prevButtons)
 			{
-				EnqueueNewEvent(new MouseStateEventArgs(pos, buttons, prevPos, prevButtons));
+				EnqueueNewEvent(new MouseStateEventArgs(pos, buttons));
 			}
 
 			prevPos = pos;
