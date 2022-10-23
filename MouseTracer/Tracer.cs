@@ -20,9 +20,11 @@ namespace MouseTracer
 
 		private readonly List<MouseState> movesHistory = new List<MouseState>();
 
-        private MouseButtons prevButtons;
+        private double fadeTravelCounter;
 
         private bool running = false;
+
+        public bool FadeOverTime { get; set; } = true;
 
         public bool DrawClicks { get; set; } = true;
 
@@ -56,7 +58,6 @@ namespace MouseTracer
             if (run)
             {
                 movesHistory.Clear();
-                prevButtons = MouseButtons.None;
 				Program.MouseHook.MouseAction += DoMouseEvent;
             }
             else
@@ -71,6 +72,11 @@ namespace MouseTracer
         {
             UpdateMouseHistory(e);
 
+            if (FadeOverTime)
+            {
+                DoFadeImage();
+            }
+
             if (DrawMouseMove)
             {
                 DoDrawMouseMove();
@@ -78,10 +84,8 @@ namespace MouseTracer
 
             if (DrawClicks)
             {
-                DoDrawMouseClick(e.Buttons & ~prevButtons);
+                DoDrawMouseClick();
             }
-
-            prevButtons = e.Buttons;
         }
 
 		private void UpdateMouseHistory(MouseStateEventArgs e)
@@ -124,20 +128,27 @@ namespace MouseTracer
             }
         }
 
-        private void DoDrawMouseClick(MouseButtons button)
+        private void DoDrawMouseClick()
         {
 			const float CCD = 15; // click circle diameter
 
-            if (button == MouseButtons.None || movesHistory.Count < 2)
+            if (movesHistory.Count < 2)
             {
                 return;
             }
 
-			var prev = movesHistory[1].Position;
+            var buttons = movesHistory[0].Buttons & ~movesHistory[1].Buttons;
+
+            if (buttons == MouseButtons.None)
+            {
+                return;
+            }
+
+            var prev = movesHistory[1].Position;
 			var cur = movesHistory[0].Position;
 			var c = palette.VectorColor(prev, cur);
 
-            if (button.HasFlag(MouseButtons.Left))
+            if (buttons.HasFlag(MouseButtons.Left))
             {
 				using (var b = new SolidBrush(c))
                 {
@@ -145,7 +156,7 @@ namespace MouseTracer
                 }
             }
 
-			if (button.HasFlag(MouseButtons.Right))
+			if (buttons.HasFlag(MouseButtons.Right))
 			{
                 using (var p = new Pen(c))
                 {
@@ -153,13 +164,39 @@ namespace MouseTracer
                 }
             }
 
-			if ((button & ~(MouseButtons.Left | MouseButtons.Right)) != MouseButtons.None)
+			if ((buttons & ~(MouseButtons.Left | MouseButtons.Right)) != MouseButtons.None)
 			{
 				using (var p = new Pen(c))
 				{
                     graph.DrawRectangle(p, cur.X - CCD / 2, cur.Y - CCD / 2, CCD, CCD);
 				}
 			}
+        }
+
+        private void DoFadeImage()
+        {
+            if (movesHistory.Count < 2)
+            {
+                return;
+            }
+
+            const double FadeTriggerDistMult = 200;
+            const double FadeoutStrength = 0.15;
+
+            var p1 = movesHistory[1].Position;
+            var p2 = movesHistory[0].Position;
+            fadeTravelCounter += Math.Sqrt((p1.X - p2.X) * (p1.X - p2.X) + (p1.Y - p2.Y) * (p1.Y - p2.Y));
+            if (fadeTravelCounter < Math.Min(screenBounds.Width, screenBounds.Height) * FadeTriggerDistMult)
+            {
+                return;
+            }
+            fadeTravelCounter = 0;
+
+            var c = palette.Background;
+            using (var b = new SolidBrush(Color.FromArgb((int)(255 * FadeoutStrength), c.R, c.G, c.B)))
+            {
+                graph.FillRectangle(b, 0, 0, screenBounds.Width, screenBounds.Height);
+            }
         }
 
         private class MouseState
