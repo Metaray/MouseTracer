@@ -46,12 +46,12 @@ namespace MouseTracer
 
         private void DoMouseEvent(object sender, MouseStateEventArgs e)
         {
-            if (e.Buttons.HasFlag(MouseButtons.Left))
+            if (e.Pressed.HasFlag(MouseButtons.Left))
             {
                 leftClicks++;
             }
 
-            if (e.Buttons.HasFlag(MouseButtons.Right))
+            if (e.Pressed.HasFlag(MouseButtons.Right))
             {
                 rightClicks++;
             }

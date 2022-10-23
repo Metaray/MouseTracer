@@ -51,11 +51,9 @@ namespace MouseTracer
 			if (IsKeyPressed(Keys.MButton))
 				buttons |= MouseButtons.Middle;
 
-			var pressed = (~prevButtons) & buttons;
-
-			if (pos != prevPos || pressed != MouseButtons.None)
+			if (pos != prevPos || buttons != prevButtons)
 			{
-				NotifyMouseAction(new MouseStateEventArgs(pos, pressed, prevPos, prevButtons));
+				EnqueueNewEvent(new MouseStateEventArgs(pos, buttons, prevPos, prevButtons));
 			}
 
 			prevPos = pos;

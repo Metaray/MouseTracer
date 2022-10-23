@@ -71,7 +71,7 @@ namespace MouseTracer
 
             if (DrawClicks)
             {
-                DoDrawMouseClick(e.Buttons);
+                DoDrawMouseClick(e.Pressed);
             }
         }
 

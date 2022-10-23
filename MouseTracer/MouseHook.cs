@@ -14,6 +14,8 @@ namespace MouseTracer
 
         private readonly Timer sendTimer;
 
+        private bool initialized;
+
 		public event EventHandler<MouseStateEventArgs> MouseAction;
 
 		public MouseHook()
@@ -29,17 +31,26 @@ namespace MouseTracer
         {
             while (hookEvents.TryDequeue(out var evt))
             {
-                NotifyMouseAction(evt);
+                // Skip first event to prevent sending invalid previous state data
+                if (initialized)
+                {
+                    NotifyMouseAction(evt);
+                }
+                else
+                {
+                    initialized = true;
+                }
             }
         }
 
-        protected virtual void NotifyMouseAction(MouseStateEventArgs args)
+        private void NotifyMouseAction(MouseStateEventArgs args)
         {
             MouseAction?.Invoke(this, args);
         }
 
         public virtual void Start()
         {
+            initialized = false;
             sendTimer.Start();
         }
 
@@ -48,6 +59,7 @@ namespace MouseTracer
             sendTimer.Stop();
         }
 
+        // Asynchronous, thread safe
         protected void EnqueueNewEvent(MouseStateEventArgs eventArgs)
         {
             // Drop events if consumer thread stalled to prevent runaway memory growth
