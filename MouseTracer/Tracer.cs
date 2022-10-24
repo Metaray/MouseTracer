@@ -17,9 +17,11 @@ namespace MouseTracer
 
         private readonly ColorPalette palette;
 
-        private const int HistLength = 4;
+        private MouseState currentState;
 
-		private readonly List<MouseState> movesHistory = new List<MouseState>();
+        private MouseState previousState;
+
+        private MouseState previousPosState;
 
         private double fadeTravelCounter = 0;
 
@@ -62,7 +64,7 @@ namespace MouseTracer
 
             if (run)
             {
-                movesHistory.Clear();
+                previousPosState = previousState = currentState = null;
                 noMovementTimer.Restart();
 				Program.MouseHook.MouseAction += DoMouseEvent;
             }
@@ -105,32 +107,33 @@ namespace MouseTracer
 			pos.X -= screenBounds.X;
 			pos.Y -= screenBounds.Y;
 
-			if (movesHistory.Count == 0 || movesHistory[0].Position != pos)
+            var newState = new MouseState(pos, e.Buttons);
+
+            if (currentState != null && currentState.Position != newState.Position)
             {
-                movesHistory.Insert(0, new MouseState(pos, e.Buttons));
-                if (movesHistory.Count > HistLength)
-                {
-                    movesHistory.RemoveAt(HistLength);
-                }
+                previousPosState = currentState;
             }
+
+            previousState = currentState;
+            currentState = newState;
 		}
 
 		private void DoDrawMouseMove()
         {
-            if (movesHistory.Count < 2)
+            if (previousState == null)
             {
                 return;
             }
 
-            var prev = movesHistory[1].Position;
-			var cur = movesHistory[0].Position;
+            var prev = previousState.Position;
+			var cur = currentState.Position;
             if (prev == cur)
             {
                 return;
             }
 
 			var c = palette.VectorColor(prev, cur);
-            float w = (movesHistory[0].Buttons != MouseButtons.None) && (movesHistory[1].Buttons != MouseButtons.None)
+            float w = (currentState.Buttons != MouseButtons.None) && (previousState.Buttons != MouseButtons.None)
                 ? 3.0f : 1.0f;
 
 			using (var p = new Pen(c, w))
@@ -146,13 +149,13 @@ namespace MouseTracer
             const float MinRadius = 10.0f;
             const float MaxRadius = 500.0f;
 
-            if (movesHistory.Count < 2)
+            if (previousState == null)
             {
                 return;
             }
 
-            var prev = movesHistory[1].Position;
-            var cur = movesHistory[0].Position;
+            var prev = previousState.Position;
+            var cur = currentState.Position;
             if (prev == cur)
             {
                 return;
@@ -182,21 +185,20 @@ namespace MouseTracer
         {
 			const float CCD = 15; // click circle diameter
 
-            if (movesHistory.Count < 2)
+            if (previousPosState == null)
             {
                 return;
             }
 
-            var buttons = movesHistory[0].Buttons & ~movesHistory[1].Buttons;
+            var buttons = currentState.Buttons & ~previousState.Buttons;
 
             if (buttons == MouseButtons.None)
             {
                 return;
             }
 
-            var prev = movesHistory[1].Position;
-			var cur = movesHistory[0].Position;
-			var c = palette.VectorColor(prev, cur);
+            var cur = currentState.Position;
+			var c = palette.VectorColor(previousPosState.Position, cur);
 
             if (buttons.HasFlag(MouseButtons.Left))
             {
@@ -230,7 +232,7 @@ namespace MouseTracer
 
         private void DoFadeImage()
         {
-            if (movesHistory.Count < 2)
+            if (previousState == null)
             {
                 return;
             }
@@ -238,8 +240,8 @@ namespace MouseTracer
             const double FadeTriggerDistMult = 200;
             const double FadeoutStrength = 0.15;
 
-            var p1 = movesHistory[1].Position;
-            var p2 = movesHistory[0].Position;
+            var p1 = previousState.Position;
+            var p2 = currentState.Position;
             fadeTravelCounter += Math.Sqrt((p1.X - p2.X) * (p1.X - p2.X) + (p1.Y - p2.Y) * (p1.Y - p2.Y));
             if (fadeTravelCounter < Math.Min(screenBounds.Width, screenBounds.Height) * FadeTriggerDistMult)
             {
