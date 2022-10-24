@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using System.Collections.Generic;
 using MouseTracer.Palettes;
+using System.Diagnostics;
 
 namespace MouseTracer
 {
@@ -20,7 +21,9 @@ namespace MouseTracer
 
 		private readonly List<MouseState> movesHistory = new List<MouseState>();
 
-        private double fadeTravelCounter;
+        private double fadeTravelCounter = 0;
+
+        private Stopwatch noMovementTimer = new Stopwatch();
 
         private bool running = false;
 
@@ -29,6 +32,8 @@ namespace MouseTracer
         public bool DrawClicks { get; set; } = true;
 
         public bool DrawMouseMove { get; set; } = true;
+
+        public bool DrawMouseStops { get; set; } = true;
 
         public Tracer(ColorPalette palette)
         {
@@ -58,6 +63,7 @@ namespace MouseTracer
             if (run)
             {
                 movesHistory.Clear();
+                noMovementTimer.Restart();
 				Program.MouseHook.MouseAction += DoMouseEvent;
             }
             else
@@ -85,6 +91,11 @@ namespace MouseTracer
             if (DrawClicks)
             {
                 DoDrawMouseClick();
+            }
+
+            if (DrawMouseStops)
+            {
+                DoDrawMouseStops();
             }
         }
 
@@ -128,6 +139,45 @@ namespace MouseTracer
             }
         }
 
+        private void DoDrawMouseStops()
+        {
+            const float MinNoMoveTime = 5.0f;
+            const float HalfRadiusTime = 180.0f;
+            const float MinRadius = 10.0f;
+            const float MaxRadius = 500.0f;
+
+            if (movesHistory.Count < 2)
+            {
+                return;
+            }
+
+            var prev = movesHistory[1].Position;
+            var cur = movesHistory[0].Position;
+            if (prev == cur)
+            {
+                return;
+            }
+
+            var delta = noMovementTimer.ElapsedMilliseconds / 1000.0f;
+            noMovementTimer.Restart();
+
+            if (delta < MinNoMoveTime)
+            {
+                return;
+            }
+
+            var t = delta - MinNoMoveTime;
+            //var f = 1 - 1 / (1 + t / HalfRadiusTime);
+            var f = 1 - Math.Exp(-t / (HalfRadiusTime / Math.Log(2)));
+            var r = MinRadius + (float)f * (MaxRadius - MinRadius);
+            var c = palette.VectorColor(prev, cur);
+
+            using (var p = new Pen(c))
+            {
+                graph.DrawEllipse(p, cur.X - r, cur.Y - r, r * 2, r * 2);
+            }
+        }
+
         private void DoDrawMouseClick()
         {
 			const float CCD = 15; // click circle diameter
@@ -150,25 +200,30 @@ namespace MouseTracer
 
             if (buttons.HasFlag(MouseButtons.Left))
             {
+                var r = CCD / 2;
 				using (var b = new SolidBrush(c))
                 {
-                    graph.FillEllipse(b, cur.X - CCD / 2, cur.Y - CCD / 2, CCD, CCD);
+                    graph.FillEllipse(b, cur.X - r, cur.Y - r, r * 2, r * 2);
                 }
             }
 
 			if (buttons.HasFlag(MouseButtons.Right))
 			{
-                using (var p = new Pen(c))
+                var w = 2;
+                var r = CCD / 2 - w;
+                using (var p = new Pen(c, w))
                 {
-                    graph.DrawEllipse(p, cur.X - CCD / 2, cur.Y - CCD / 2, CCD, CCD);
+                    graph.DrawEllipse(p, cur.X - r, cur.Y - r, r * 2, r * 2);
                 }
             }
 
 			if ((buttons & ~(MouseButtons.Left | MouseButtons.Right)) != MouseButtons.None)
 			{
-				using (var p = new Pen(c))
+                var w = 2;
+                var r = CCD / 2 - w;
+                using (var p = new Pen(c, w))
 				{
-                    graph.DrawRectangle(p, cur.X - CCD / 2, cur.Y - CCD / 2, CCD, CCD);
+                    graph.DrawRectangle(p, cur.X - r, cur.Y - r, r * 2, r * 2);
 				}
 			}
         }
