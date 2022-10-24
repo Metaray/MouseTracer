@@ -254,5 +254,10 @@ namespace MouseTracer
             currentPalette = (ColorPalette)menuItem.Tag;
             ResetTrace();
         }
+
+        private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            new AboutBox().ShowDialog();
+        }
     }
 }
